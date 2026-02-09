@@ -1,0 +1,11 @@
+symbol,category,ai_strategy,annualized_return,annualized_volatility,sharpe_ratio,capex_2025_B,capex_2026_B,ai_pct_of_capex,est_ai_spend_2026_B,build_or_rent,value_chain_rank
+NVDA,Infrastructure,Sells AI hardware,153.98,44.82,3.335,,,,,N/A,1
+META,AI Builder,"Proprietary (Llama, MTIA chips)",86.29,34.52,2.369,72.2,125.0,95,118.8,Build,2
+GOOGL,AI Builder,"Proprietary (Gemini, TPUs)",58.23,27.16,1.978,75.0,180.0,80,144.0,Build,2
+MSFT,AI Integrator,Partnership (OpenAI),29.87,20.73,1.224,80.0,145.0,60,87.0,Rent,3
+AMZN,AI Integrator,Partnership (Anthropic),44.58,26.37,1.52,124.5,200.0,40,80.0,Rent,3
+AAPL,Control,Late mover (Apple Intelligence),31.22,21.09,1.267,,,,,N/A,4
+TSLA,Control,Autonomous driving / robotics,79.8,58.93,1.278,,,,,N/A,4
+CRM,Legacy Tech,AI features (Einstein),33.69,35.13,0.831,,,,,N/A,5
+ORCL,Legacy Tech,Cloud/AI pivot,46.17,41.18,1.012,,,,,N/A,5
+ADBE,Legacy Tech,AI-disrupted (Firefly),6.86,33.78,0.07,,,,,N/A,5
