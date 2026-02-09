@@ -73,3 +73,47 @@ SELECT symbol,
 FROM crypto
 GROUP BY symbol
 ORDER BY range_pct DESC;
+
+-- ============================================================
+-- 7. DEDUP + CASE: AI Value Chain category performance
+--    Handles duplicate records from multiple pipeline runs
+-- ============================================================
+SELECT
+    CASE
+        WHEN symbol = 'NVDA' THEN 'Infrastructure'
+        WHEN symbol IN ('META', 'GOOGL') THEN 'AI Builder'
+        WHEN symbol IN ('MSFT', 'AMZN') THEN 'AI Integrator'
+        WHEN symbol IN ('CRM', 'ORCL', 'ADBE') THEN 'Legacy Tech'
+        ELSE 'Control'
+    END AS category,
+    ROUND(AVG(change_percent), 2) AS avg_daily_change,
+    ROUND(AVG(volume), 0) AS avg_volume,
+    COUNT(DISTINCT symbol) AS stocks
+FROM (
+    SELECT symbol, trading_day, change_percent, volume,
+           ROW_NUMBER() OVER (PARTITION BY symbol, trading_day ORDER BY extracted_at DESC) AS rn
+    FROM stocks
+)
+WHERE rn = 1
+GROUP BY CASE
+    WHEN symbol = 'NVDA' THEN 'Infrastructure'
+    WHEN symbol IN ('META', 'GOOGL') THEN 'AI Builder'
+    WHEN symbol IN ('MSFT', 'AMZN') THEN 'AI Integrator'
+    WHEN symbol IN ('CRM', 'ORCL', 'ADBE') THEN 'Legacy Tech'
+    ELSE 'Control'
+END
+ORDER BY avg_daily_change DESC;
+
+-- ============================================================
+-- 8. DOLLAR VOLUME: Liquidity ranking (price x volume)
+-- ============================================================
+SELECT symbol, price, volume,
+       ROUND(price * volume / 1000000000, 2) AS dollar_volume_B,
+       change_percent
+FROM (
+    SELECT symbol, price, volume, change_percent,
+           ROW_NUMBER() OVER (PARTITION BY symbol, trading_day ORDER BY extracted_at DESC) AS rn
+    FROM stocks
+)
+WHERE rn = 1
+ORDER BY price * volume DESC;
