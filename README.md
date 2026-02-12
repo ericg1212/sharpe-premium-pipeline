@@ -97,8 +97,15 @@ data-engineering-portfolio/
 ├── monitoring/
 │   ├── pipeline_monitor.py        # Airflow DAG: health checks
 │   └── data_quality.py            # Validation functions
+├── tests/
+│   ├── conftest.py                # Shared pytest fixtures
+│   ├── test_sharpe_calculation.py # Sharpe ratio unit tests
+│   ├── test_data_quality.py       # Data validation tests
+│   └── test_portfolio_analysis.py # Portfolio analysis tests
 ├── queries/
 │   └── sample_queries.sql         # Athena SQL showcase queries
+├── docker-compose.yaml            # Airflow cluster (6 containers)
+├── pytest.ini                     # Test configuration
 ├── .env.example                   # Template for credentials
 ├── .gitignore
 ├── requirements.txt
@@ -135,6 +142,18 @@ cp monitoring/*.py dags/
 
 # 6. Run the historical backtest
 python stock_pipeline/historical_backtest.py
+```
+
+### Running Tests
+```bash
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run all tests
+pytest tests/ -v
+
+# Run a specific test file
+pytest tests/test_sharpe_calculation.py -v
 ```
 
 ## Data Source
