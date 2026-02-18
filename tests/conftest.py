@@ -1,10 +1,52 @@
 """Shared pytest fixtures for the data engineering portfolio test suite."""
 
+import sys
+import json
+import os
 import pytest
 import pandas as pd
 import numpy as np
+import boto3
 from datetime import datetime
+from unittest.mock import MagicMock
+from moto import mock_aws
 
+# ── Stub Airflow so pipeline DAG modules can be imported without Airflow installed ──
+for _mod in [
+    'airflow',
+    'airflow.models',
+    'airflow.operators',
+    'airflow.operators.python',
+]:
+    sys.modules.setdefault(_mod, MagicMock())
+
+# Wire the bare 'data_quality' import used by DAG files (in Airflow they live
+# alongside data_quality.py in dags/; in tests we point to the real module).
+import monitoring.data_quality as _dq
+sys.modules.setdefault('data_quality', _dq)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── S3 fixture ────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def s3_client(monkeypatch):
+    """Moto-backed S3 client with fake credentials and a pre-created test bucket.
+
+    Any boto3 calls made inside the test (including those inside pipeline
+    load_to_s3 functions) are intercepted by moto for the duration of the test.
+    """
+    monkeypatch.setenv('AWS_ACCESS_KEY_ID', 'testing')
+    monkeypatch.setenv('AWS_SECRET_ACCESS_KEY', 'testing')
+    monkeypatch.setenv('AWS_DEFAULT_REGION', 'us-east-1')
+    monkeypatch.setenv('S3_BUCKET', 'test-bucket')
+    with mock_aws():
+        client = boto3.client('s3', region_name='us-east-1')
+        client.create_bucket(Bucket='test-bucket')
+        yield client
+
+
+# ── Fixtures for historical_backtest / portfolio_analysis tests ───────────────
 
 @pytest.fixture
 def sample_monthly_prices():
