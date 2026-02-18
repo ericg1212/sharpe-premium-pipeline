@@ -1,10 +1,6 @@
 """Tests for data quality validation functions in monitoring/data_quality.py."""
 
-import sys
-import os
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from monitoring.data_quality import validate_weather_data, validate_stock_data, DataQualityError
 

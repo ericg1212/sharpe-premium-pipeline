@@ -1,13 +1,8 @@
 """Tests for Sharpe ratio calculation in historical_backtest.py."""
 
-import sys
-import os
 import pytest
 import pandas as pd
 import numpy as np
-
-# Add project root to path so we can import the module
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from stock_pipeline.historical_backtest import calculate_sharpe, RISK_FREE_RATE, STOCKS
 

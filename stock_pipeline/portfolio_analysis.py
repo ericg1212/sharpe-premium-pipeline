@@ -6,21 +6,18 @@ from historical backtest results.
 No API calls needed - works entirely from backtest_results.json.
 """
 
-import json
+import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import json
 import csv
 import logging
+import numpy as np
+from config import AI_CAPEX
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# AI capex data (2025 actual, 2026 guidance)
-AI_CAPEX = {
-    'META':  {'capex_2025_B': 72.2, 'capex_2026_B': 125.0, 'ai_pct': 95, 'revenue_2025_B': 188.0},
-    'GOOGL': {'capex_2025_B': 75.0, 'capex_2026_B': 180.0, 'ai_pct': 80, 'revenue_2025_B': 350.0},
-    'MSFT':  {'capex_2025_B': 80.0, 'capex_2026_B': 145.0, 'ai_pct': 60, 'revenue_2025_B': 262.0},
-    'AMZN':  {'capex_2025_B': 124.5, 'capex_2026_B': 200.0, 'ai_pct': 40, 'revenue_2025_B': 638.0},
-}
 
 
 def load_results():
@@ -123,15 +120,20 @@ def capex_efficiency_analysis(results):
     ai_pcts = [row['ai_pct'] for row in rows]
     sharpes = [row['sharpe'] for row in rows]
 
-    # Simple rank correlation
+    # Rank order for display
     ai_rank = sorted(range(len(ai_pcts)), key=lambda i: ai_pcts[i], reverse=True)
     sharpe_rank = sorted(range(len(sharpes)), key=lambda i: sharpes[i], reverse=True)
 
     logger.info(f"\n  Ranked by AI% of capex:  {' > '.join(rows[i]['symbol'] for i in ai_rank)}")
     logger.info(f"  Ranked by Sharpe ratio:  {' > '.join(rows[i]['symbol'] for i in sharpe_rank)}")
 
-    match = ai_rank == sharpe_rank
-    logger.info(f"  Rankings match: {'YES - AI commitment directly correlates with returns' if match else 'Partial'}")
+    # Spearman rank correlation: measures how consistently higher AI% -> higher Sharpe
+    n = len(ai_pcts)
+    rx = np.argsort(np.argsort(ai_pcts))
+    ry = np.argsort(np.argsort(sharpes))
+    rho = 1 - 6 * int(np.sum((rx - ry) ** 2)) / (n * (n ** 2 - 1)) if n > 1 else 0.0
+    logger.info(f"  Spearman ρ (AI% → Sharpe): {rho:+.3f}"
+                + (" — perfect positive correlation" if rho == 1.0 else ""))
 
     return rows
 

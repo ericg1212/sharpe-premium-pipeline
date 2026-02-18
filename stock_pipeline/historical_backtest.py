@@ -16,7 +16,10 @@ Stock Categories:
   Control:        AAPL, TSLA
 """
 
+import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json
 import logging
 import requests
@@ -24,38 +27,10 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from time import sleep
+from config import STOCKS, AI_CAPEX, RISK_FREE_RATE, RATE_LIMIT_DELAY
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Stock universe with category and AI strategy labels
-STOCKS = {
-    'NVDA':  {'category': 'Infrastructure', 'ai_strategy': 'Sells AI hardware'},
-    'META':  {'category': 'AI Builder',     'ai_strategy': 'Proprietary (Llama, MTIA chips)'},
-    'GOOGL': {'category': 'AI Builder',     'ai_strategy': 'Proprietary (Gemini, TPUs)'},
-    'MSFT':  {'category': 'AI Integrator',  'ai_strategy': 'Partnership (OpenAI)'},
-    'AMZN':  {'category': 'AI Integrator',  'ai_strategy': 'Partnership (Anthropic)'},
-    'CRM':   {'category': 'Legacy Tech',    'ai_strategy': 'AI features (Einstein)'},
-    'ORCL':  {'category': 'Legacy Tech',    'ai_strategy': 'Cloud/AI pivot'},
-    'ADBE':  {'category': 'Legacy Tech',    'ai_strategy': 'AI-disrupted (Firefly)'},
-    'AAPL':  {'category': 'Control',        'ai_strategy': 'Late mover (Apple Intelligence)'},
-    'TSLA':  {'category': 'Control',        'ai_strategy': 'Autonomous driving / robotics'},
-}
-
-# AI capex data (2025 actual, 2026 guidance) - sources: CNBC, Bloomberg, earnings calls Feb 2026
-# Only tracked for the 4 hybrid companies where Build vs Rent thesis applies
-AI_CAPEX = {
-    'META':  {'capex_2025_B': 72.2, 'capex_2026_B': 125.0, 'ai_pct': 95,
-              'notes': 'No cloud/logistics - nearly all capex is proprietary AI'},
-    'GOOGL': {'capex_2025_B': 75.0, 'capex_2026_B': 180.0, 'ai_pct': 80,
-              'notes': 'Mostly proprietary (TPUs, Gemini) + some cloud infra'},
-    'MSFT':  {'capex_2025_B': 80.0, 'capex_2026_B': 145.0, 'ai_pct': 60,
-              'notes': 'Split: Azure general cloud + OpenAI partnership'},
-    'AMZN':  {'capex_2025_B': 124.5, 'capex_2026_B': 200.0, 'ai_pct': 40,
-              'notes': 'Split: AWS, warehouses, logistics, Anthropic partnership'},
-}
-
-RISK_FREE_RATE = 0.045  # ~4.5% avg 10-year Treasury 2023-2025
 
 
 def fetch_monthly_prices(symbol):
@@ -152,7 +127,7 @@ def run_backtest():
                 )
 
             if i < len(STOCKS) - 1:
-                sleep(12)
+                sleep(RATE_LIMIT_DELAY)
 
         except Exception as e:
             logger.error(f"  {symbol} FAILED: {str(e)}")

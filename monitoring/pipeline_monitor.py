@@ -5,6 +5,7 @@ import boto3
 import logging
 import json
 import os
+from config import S3_BUCKET
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,10 @@ def check_weather_pipeline():
     """Check if weather data was loaded today"""
     try:
         s3 = get_s3_client()
-        bucket = os.environ.get('S3_BUCKET', 'weather-pipeline-eric-2026')
+        bucket = os.environ.get('S3_BUCKET', S3_BUCKET)
         
         today = datetime.now().strftime('%Y-%m-%d')
-        prefix = f"raw/{today}/"
+        prefix = f"weather/{today}/"
         
         response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
         
@@ -75,7 +76,7 @@ def check_stock_pipeline():
     """Check if stock data was loaded today"""
     try:
         s3 = get_s3_client()
-        bucket = os.environ.get('S3_BUCKET', 'weather-pipeline-eric-2026')
+        bucket = os.environ.get('S3_BUCKET', S3_BUCKET)
 
         today = datetime.now().strftime('%Y-%m-%d')
         prefix = f"stocks/{today}/"
@@ -115,7 +116,7 @@ def check_crypto_pipeline():
     """Check if crypto data was loaded today"""
     try:
         s3 = get_s3_client()
-        bucket = os.environ.get('S3_BUCKET', 'weather-pipeline-eric-2026')
+        bucket = os.environ.get('S3_BUCKET', S3_BUCKET)
 
         today = datetime.now().strftime('%Y-%m-%d')
         prefix = f"crypto/{today}/"

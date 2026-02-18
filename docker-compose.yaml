@@ -57,9 +57,9 @@ x-airflow-common:
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
-    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY:-}  # generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
@@ -73,7 +73,7 @@ x-airflow-common:
     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
-    S3_BUCKET: ${S3_BUCKET:-weather-pipeline-eric-2026}
+    S3_BUCKET: ${S3_BUCKET:-ai-sharpe-analysis-eric}
     # API keys
     ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
     OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
@@ -92,7 +92,7 @@ x-airflow-common:
 
 services:
   postgres:
-    image: postgres:13
+    image: postgres:16
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow

@@ -7,6 +7,7 @@ import boto3
 import logging
 import os
 from time import sleep
+from config import WEATHER_CITY, S3_BUCKET
 from data_quality import validate_weather_data, log_data_stats
 
 # Setup logging
@@ -34,8 +35,8 @@ dag = DAG(
 # Task 1: Extract weather data with retry logic
 def extract_weather():
     api_key = os.environ['OPENWEATHER_API_KEY']
-    city = "Brooklyn"
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=imperial"
+    city = WEATHER_CITY
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=imperial"
     
     max_retries = 3
     retry_delay = 5
@@ -142,8 +143,8 @@ def load_to_s3():
             aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
             region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
         )
-        bucket = os.environ.get('S3_BUCKET', 'weather-pipeline-eric-2026')
-        
+        bucket = os.environ.get('S3_BUCKET', S3_BUCKET)
+
         # Read transformed data
         with open('/tmp/weather_transformed.json', 'r') as f:
             data = json.load(f)
@@ -151,7 +152,7 @@ def load_to_s3():
         # Upload to S3
         date_str = datetime.now().strftime('%Y-%m-%d')
         timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        key = f"raw/{date_str}/{timestamp_str}.json"
+        key = f"weather/{date_str}/{timestamp_str}.json"
         
         s3.put_object(
             Bucket=bucket,

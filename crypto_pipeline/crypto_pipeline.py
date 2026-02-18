@@ -7,6 +7,7 @@ import boto3
 import logging
 import os
 from time import sleep
+from config import CRYPTO_SYMBOLS, S3_BUCKET
 from data_quality import validate_stock_data, log_data_stats
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ dag = DAG(
 )
 
 def extract_crypto_data():
-    symbols = ['BTC-USD', 'ETH-USD', 'SOL-USD']
+    symbols = CRYPTO_SYMBOLS
     
     all_data = []
     max_retries = 3
@@ -136,8 +137,8 @@ def load_to_s3():
             aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
             region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
         )
-        bucket = os.environ.get('S3_BUCKET', 'weather-pipeline-eric-2026')
-        
+        bucket = os.environ.get('S3_BUCKET', S3_BUCKET)
+
         with open('/tmp/crypto_transformed.json', 'r') as f:
             data = f.read()
         

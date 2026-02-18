@@ -1,10 +1,6 @@
 """Tests for portfolio analysis functions in stock_pipeline/portfolio_analysis.py."""
 
-import sys
-import os
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from stock_pipeline.portfolio_analysis import (
     build_vs_rent_analysis,
