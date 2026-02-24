@@ -185,9 +185,53 @@ def value_chain_summary(results):
     return summary_rows
 
 
-def save_analysis(build_rent, capex_rows, chain_summary):
+def save_analysis(build_rent, capex_rows, chain_summary, results):
     """Save analysis as CSV files for Power BI."""
     output_dir = os.path.dirname(os.path.abspath(__file__))
+
+    rank_map = {'Infrastructure': 1, 'AI Builder': 2, 'AI Integrator': 3, 'Control': 4, 'Legacy Tech': 5}
+    bor_map = {'AI Builder': 'Build', 'AI Integrator': 'Rent'}
+
+    # backtest_results.csv — stock-level detail
+    br_path = os.path.join(output_dir, 'backtest_results.csv')
+    br_fields = ['symbol', 'category', 'ai_strategy', 'annualized_return', 'annualized_volatility',
+                 'sharpe_ratio', 'months_analyzed', 'start_date', 'end_date',
+                 'capex_2025_B', 'capex_2026_B', 'ai_pct_of_capex', 'est_ai_spend_2026_B']
+    with open(br_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=br_fields, extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(results)
+    logger.info(f"Saved: {br_path}")
+
+    # powerbi_master.csv — primary Power BI source
+    pbi_path = os.path.join(output_dir, 'powerbi_master.csv')
+    pbi_fields = ['symbol', 'category', 'ai_strategy', 'annualized_return', 'annualized_volatility',
+                  'sharpe_ratio', 'capex_2025_B', 'capex_2026_B', 'ai_pct_of_capex',
+                  'est_ai_spend_2026_B', 'build_or_rent', 'value_chain_rank']
+    with open(pbi_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=pbi_fields, extrasaction='ignore')
+        writer.writeheader()
+        for r in results:
+            row = dict(r)
+            row['build_or_rent'] = bor_map.get(r['category'], 'N/A')
+            row['value_chain_rank'] = rank_map.get(r['category'], 99)
+            writer.writerow(row)
+    logger.info(f"Saved: {pbi_path}")
+
+    # category_summary.csv — category-level aggregates
+    cat_path = os.path.join(output_dir, 'category_summary.csv')
+    with open(cat_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['category', 'avg_return', 'avg_volatility', 'avg_sharpe', 'stock_count'])
+        writer.writeheader()
+        for row in chain_summary:
+            writer.writerow({
+                'category': row['category'],
+                'avg_return': row['avg_return'],
+                'avg_volatility': row['avg_volatility'],
+                'avg_sharpe': row['avg_sharpe'],
+                'stock_count': row['stock_count'],
+            })
+    logger.info(f"Saved: {cat_path}")
 
     # Build vs Rent comparison
     bvr_path = os.path.join(output_dir, 'build_vs_rent.csv')
@@ -232,7 +276,7 @@ def main():
     capex_rows = capex_efficiency_analysis(results)
     chain_summary = value_chain_summary(results)
 
-    save_analysis(build_rent, capex_rows, chain_summary)
+    save_analysis(build_rent, capex_rows, chain_summary, results)
 
     logger.info("\n" + "=" * 70)
     logger.info("HEADLINE: The market rewards AI builders, not AI renters.")
