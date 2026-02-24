@@ -1,4 +1,6 @@
 rank,category,stocks,avg_return,avg_volatility,avg_sharpe,stock_count
-1,Infrastructure,NVDA,153.98,44.82,3.335,1
-2,AI Builder,"META, GOOGL",72.26,30.84,2.174,2
-3,AI Integrator,"MSFT, AMZN",37.23,23.55,1.372,2
+1,Infrastructure,NVDA,144.18,43.92,3.18,1
+2,AI Builder,"META, GOOGL",66.83,31.1,1.985,2
+3,AI Integrator,"MSFT, AMZN",28.59,25.01,0.939,2
+4,Control,"AAPL, TSLA",48.59,39.41,1.131,2
+5,Legacy Tech,"CRM, ORCL, ADBE",14.98,38.51,0.247,3

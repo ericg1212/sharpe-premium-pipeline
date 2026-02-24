@@ -4,21 +4,21 @@ A data engineering pipeline that analyzes whether building proprietary AI delive
 
 ## Key Finding: The Market Rewards AI Builders, Not AI Renters
 
-Analysis of 3-year risk-adjusted returns (2023-2025) across 10 major tech stocks reveals a clear **AI value chain hierarchy** in Sharpe ratios:
+Analysis of risk-adjusted returns (Jan 2023 – present) across 10 major tech stocks reveals a clear **AI value chain hierarchy** in Sharpe ratios:
 
 | Tier | Companies | Avg Sharpe | AI Strategy |
 |------|-----------|-----------|-------------|
-| Infrastructure | NVDA | 3.335 | Sells the GPUs |
-| AI Builders | META, GOOGL | 2.174 | Proprietary AI (Llama, Gemini, custom chips) |
-| AI Integrators | MSFT, AMZN | 1.372 | Third-party partnerships (OpenAI, Anthropic) |
-| Control | AAPL, TSLA | 1.272 | Mixed AI exposure |
-| Legacy Tech | CRM, ORCL, ADBE | 0.638 | Traditional software |
+| Infrastructure | NVDA | 3.180 | Sells the GPUs |
+| AI Builders | META, GOOGL | 1.985 | Proprietary AI (Llama, Gemini, custom chips) |
+| AI Integrators | MSFT, AMZN | 0.939 | Third-party partnerships (OpenAI, Anthropic) |
+| Control | AAPL, TSLA | 1.131 | Mixed AI exposure |
+| Legacy Tech | CRM, ORCL, ADBE | 0.247 | Traditional software |
 
-**Builder Premium: +58.4%** - Companies building proprietary AI outperform those renting it through partnerships by 58% on risk-adjusted returns.
+**Builder Premium: +111.5%** - Companies building proprietary AI outperform those renting it through partnerships by 111% on risk-adjusted returns. The premium has widened from +58.4% (Dec 2025) as AI integrators weakened in early 2026 while builders held up.
 
 ![Dashboard](dashboard.png)
 
-In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more doesn't mean earning more - Meta spends the least of the four hybrids ($125B) yet delivers the highest Sharpe ratio (2.369) because nearly 100% of its capex goes to proprietary AI. Amazon spends the most ($200B) but dilutes returns across logistics and third-party partnerships.
+In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more doesn't mean earning more - Meta spends the least of the four hybrids ($125B) yet delivers the highest Sharpe ratio (2.138) because nearly 100% of its capex goes to proprietary AI. Amazon spends the most ($200B) but dilutes returns across logistics and third-party partnerships.
 
 ## Architecture
 
