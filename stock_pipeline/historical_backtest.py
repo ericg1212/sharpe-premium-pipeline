@@ -53,7 +53,7 @@ def fetch_monthly_prices(symbol):
     records = []
     for date_str, values in series.items():
         date = datetime.strptime(date_str, '%Y-%m-%d')
-        if datetime(2022, 12, 1) <= date <= datetime(2025, 12, 31):
+        if datetime(2022, 12, 1) <= date <= datetime.now():
             records.append({
                 'date': date,
                 'close': float(values['5. adjusted close']),
