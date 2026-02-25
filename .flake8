@@ -13,3 +13,4 @@ per-file-ignores =
     # sys.path.insert for standalone execution causes E402 on subsequent imports
     stock_pipeline/historical_backtest.py: E402
     stock_pipeline/portfolio_analysis.py: E402
+    stock_pipeline/historical_backfill.py: E402
