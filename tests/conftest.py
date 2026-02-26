@@ -14,6 +14,7 @@ for _mod in [
     'airflow.models',
     'airflow.operators',
     'airflow.operators.python',
+    'airflow.operators.bash',
 ]:
     sys.modules.setdefault(_mod, MagicMock())
 
