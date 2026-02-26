@@ -24,6 +24,7 @@ dags:
 	cp crypto_pipeline/crypto_pipeline.py dags/
 	cp weather_pipeline/weather_pipeline.py dags/
 	cp forecast_pipeline/forecast_pipeline.py dags/
+	cp edgar_pipeline/edgar_pipeline.py dags/
 	cp monitoring/pipeline_monitor.py dags/
 	cp monitoring/data_quality.py dags/
 	@echo "DAGs copied to ./dags"
@@ -46,7 +47,7 @@ test:
 	pytest tests/ -v
 
 lint:
-	flake8 stock_pipeline/ crypto_pipeline/ weather_pipeline/ monitoring/ tests/
+	flake8 stock_pipeline/ crypto_pipeline/ weather_pipeline/ edgar_pipeline/ monitoring/ tests/
 
 analyze:
 	@set -a && source .env && set +a && \

@@ -14,3 +14,4 @@ per-file-ignores =
     stock_pipeline/historical_backtest.py: E402
     stock_pipeline/portfolio_analysis.py: E402
     stock_pipeline/historical_backfill.py: E402
+    edgar_pipeline/edgar_pipeline.py: E402

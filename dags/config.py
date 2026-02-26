@@ -26,6 +26,14 @@ STOCKS = {
     'TSLA':  {'category': 'Control',        'ai_strategy': 'Autonomous driving / robotics'},
 }
 
+# SEC EDGAR CIK identifiers — used by edgar_pipeline.py to pull 10-K filings
+EDGAR_CIKS = {
+    'META':  '0001326801',
+    'GOOGL': '0001652044',
+    'MSFT':  '0000789019',
+    'AMZN':  '0001018724',
+}
+
 # AI capex data (2025 actual, 2026 guidance) — sources: CNBC, Bloomberg, earnings calls Feb 2026
 # Only tracked for the 4 hybrid companies where Build vs Rent thesis applies
 AI_CAPEX = {
