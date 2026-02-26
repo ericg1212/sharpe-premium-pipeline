@@ -55,6 +55,15 @@ AI_CAPEX = {
     },
 }
 
+# --- FRED macro indicators ---
+
+FRED_SERIES = {
+    'GS10':     {'description': '10-Year Treasury Constant Maturity Rate', 'units': 'percent'},
+    'CPIAUCSL': {'description': 'Consumer Price Index: All Urban Consumers', 'units': 'index_1982'},
+    'UNRATE':   {'description': 'Unemployment Rate', 'units': 'percent'},
+    'FEDFUNDS': {'description': 'Federal Funds Effective Rate', 'units': 'percent'},
+}
+
 RISK_FREE_RATE = 0.045  # ~4.5% avg 10-year Treasury 2023-2025
 
 RATE_LIMIT_DELAY = 12  # seconds between Alpha Vantage API calls (free tier: 5/min)

@@ -39,7 +39,7 @@ jobs:
             "flake8>=7.0.0,<8.0.0"
 
       - name: Lint
-        run: flake8 stock_pipeline/ crypto_pipeline/ weather_pipeline/ edgar_pipeline/ fred_pipeline/ analysis_pipeline/ monitoring/ tests/
+        run: flake8 utils.py stock_pipeline/ crypto_pipeline/ weather_pipeline/ edgar_pipeline/ fred_pipeline/ analysis_pipeline/ monitoring/ tests/
 
       - name: Run tests
         run: pytest tests/ -v
