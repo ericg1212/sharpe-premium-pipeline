@@ -20,6 +20,7 @@ setup: dags
 dags:
 	@mkdir -p dags
 	cp config.py dags/
+	cp utils.py dags/
 	cp stock_pipeline/stock_pipeline.py dags/
 	cp crypto_pipeline/crypto_pipeline.py dags/
 	cp weather_pipeline/weather_pipeline.py dags/
