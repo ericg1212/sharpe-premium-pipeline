@@ -22,3 +22,16 @@ output "athena_results_location" {
   description = "S3 location for Athena query results"
   value       = "s3://${aws_s3_bucket.data_lake.bucket}/athena-results/"
 }
+
+output "glue_tables" {
+  description = "All Glue catalog table names"
+  value = [
+    aws_glue_catalog_table.stocks.name,
+    aws_glue_catalog_table.crypto.name,
+    aws_glue_catalog_table.weather.name,
+    aws_glue_catalog_table.forecast.name,
+    aws_glue_catalog_table.fundamentals.name,
+    aws_glue_catalog_table.macro_indicators.name,
+    aws_glue_catalog_table.historical_prices.name,
+  ]
+}
