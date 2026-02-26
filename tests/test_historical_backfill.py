@@ -1,8 +1,6 @@
 """Tests for historical_backfill: format_records, write_to_s3, register_partition."""
 
 import json
-import pytest
-from botocore.exceptions import ClientError
 
 from stock_pipeline.historical_backfill import format_records, write_to_s3, register_partition
 
