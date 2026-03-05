@@ -1,6 +1,6 @@
 # Own the Model, Own the Returns
 
-A data engineering portfolio that analyzes whether building proprietary AI delivers superior risk-adjusted returns versus integrating third-party AI. Five production Airflow pipelines ingest data from Alpha Vantage, SEC EDGAR, FRED, Coinbase, and OpenWeatherMap — storing in AWS S3, querying with Athena, and visualizing findings in Power BI. 118 tests with moto-mocked AWS.
+A data engineering portfolio that analyzes whether building proprietary AI delivers superior risk-adjusted returns versus integrating third-party AI. Five production Airflow pipelines ingest data from Alpha Vantage, SEC EDGAR, FRED, Coinbase, and OpenWeatherMap — storing in AWS S3 as Parquet, querying with Athena, and visualizing findings in Power BI. 158 tests with moto-mocked AWS.
 
 ## Key Finding: The Market Rewards AI Builders, Not AI Renters
 
@@ -45,20 +45,21 @@ In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more does
 - **Stocks:** NVDA, MSFT, GOOGL, AMZN, META, CRM, ORCL, ADBE, AAPL, TSLA
 - **Source:** Alpha Vantage API (Global Quote)
 - **Schedule:** 5 PM ET Mon-Fri (after market close)
-- **S3 path:** `stocks/date={date}/data.json`
+- **S3 path:** `stocks/date={date}/{timestamp}.parquet`
 
 ### SEC EDGAR Pipeline (`edgar_pipeline/edgar_pipeline.py`)
 - **Source:** SEC EDGAR Company Facts API (free, no auth beyond User-Agent header)
 - **Data:** Annual capex + revenue from 10-K filings for META, GOOGL, MSFT, AMZN
 - **Schedule:** Quarterly (Jan/Apr/Jul/Oct 1) — picks up each company's 10-K within 3 months
-- **S3 path:** `fundamentals/cik={cik}/year={year}/data.json`
+- **S3 path:** `fundamentals/cik={cik}/year={year}/data.parquet`
+- Rate-limit aware: 1-second sleep between company fetches (SEC 10 req/sec limit)
 - Replaces hardcoded capex figures with authoritative SEC filings
 
 ### FRED Macro Pipeline (`fred_pipeline/fred_pipeline.py`)
 - **Source:** St. Louis Fed FRED API (free, API key required)
 - **Series:** GS10 (10-yr Treasury), CPIAUCSL (CPI), UNRATE (unemployment), FEDFUNDS (fed funds rate)
 - **Schedule:** 1st of every month (FRED releases with ~2-week lag)
-- **S3 path:** `macro_indicators/series={series_id}/year={year}/data.json`
+- **S3 path:** `macro_indicators/series={series_id}/year={year}/data.parquet`
 - Enables macro regime analysis: does the AI premium hold across rate cycles?
 
 ### Analysis Pipeline (`analysis_pipeline/analysis_pipeline.py`)
@@ -101,36 +102,39 @@ terraform plan       # Preview resources (no changes applied)
 |-----------|-----------|
 | Orchestration | Apache Airflow 2.10.4 (CeleryExecutor) |
 | Infrastructure | Docker Compose (6 containers, PostgreSQL 16) |
-| Storage | AWS S3 (NDJSON, Hive-style partitions) |
+| Storage | AWS S3 (Parquet/Snappy, Hive-style partitions) |
 | Query Engine | AWS Athena (Presto SQL) |
 | Visualization | Power BI |
 | IaC | Terraform |
 | Language | Python 3.12 |
-| Key Libraries | boto3, pandas, numpy, requests |
-| Testing | pytest + moto (118 tests, AWS mocked at HTTP layer) |
+| Key Libraries | boto3, pandas, numpy, pyarrow, requests |
+| Testing | pytest + moto (158 tests, AWS mocked at HTTP layer) |
 
 ## Testing
 
-118 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
+158 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
 
 ```bash
-pytest tests/ -v        # Run all 118 tests
+pytest tests/ -v        # Run all 158 tests
 pytest tests/test_edgar_pipeline.py -v   # Single pipeline
 make lint               # flake8 across all source dirs
 ```
 
 | Test File | Tests | Coverage |
 |-----------|-------|---------|
-| test_stock_pipeline.py | 9 | transform + load |
-| test_weather_pipeline.py | 8 | transform + load |
-| test_edgar_pipeline.py | 16 | extract helper, transform, load |
-| test_fred_pipeline.py | 11 | transform + load |
-| test_historical_backfill.py | 11 | format, write, register |
-| test_analysis_pipeline.py | 6 | DAG structure |
+| test_utils.py | 30 | s3_read/write_json/ndjson/parquet, Athena client, register partition |
+| test_data_quality.py | 18 | validation rules |
+| test_finance_utils.py | 16 | annualized return, drawdown, beta, rolling Sharpe |
+| test_edgar_pipeline.py | 16 | extract helper, transform, load (Parquet) |
+| test_historical_backfill.py | 11 | format (list of dicts), write (Parquet), register |
+| test_fred_pipeline.py | 11 | transform + load (Parquet) |
+| test_portfolio_analysis.py | 10 | portfolio metrics |
+| test_stock_pipeline.py | 9 | transform + load (Parquet) |
+| test_weather_pipeline.py | 8 | transform + load (Parquet) |
 | test_sharpe_calculation.py | 8 | Sharpe math |
-| test_data_quality.py | 16 | validation rules |
-| test_portfolio_analysis.py | 12 | portfolio metrics |
-| test_forecast_pipeline.py | 15 | transform + load |
+| test_crypto_pipeline.py | 8 | transform + load (Parquet) |
+| test_forecast_pipeline.py | 7 | transform + load (Parquet) |
+| test_analysis_pipeline.py | 6 | DAG structure |
 
 ## Security
 
@@ -148,8 +152,9 @@ data-engineering-portfolio/
 ├── stock_pipeline/
 │   ├── stock_pipeline.py              # Airflow DAG: 10-stock daily ingestion
 │   ├── historical_backtest.py         # 3-year Sharpe ratio analysis
-│   ├── historical_backfill.py         # One-time S3 backfill script
+│   ├── historical_backfill.py         # One-time S3 backfill script (Parquet output)
 │   ├── portfolio_analysis.py          # Build vs Rent + capex efficiency CSVs
+│   ├── finance_utils.py               # Pure finance functions: Sharpe, drawdown, beta
 │   └── *.csv / *.json                 # Power BI data files
 ├── edgar_pipeline/
 │   └── edgar_pipeline.py             # Airflow DAG: SEC 10-K capex + revenue
@@ -167,8 +172,11 @@ data-engineering-portfolio/
 │   ├── pipeline_monitor.py           # Airflow DAG: health checks
 │   └── data_quality.py               # Validation functions
 ├── tests/
-│   ├── conftest.py                   # Shared moto S3 fixtures + Airflow stubs
+│   ├── conftest.py                   # Shared moto S3/Athena fixtures + Airflow stubs
+│   ├── test_utils.py                 # 30 tests for shared utils helpers
+│   ├── test_finance_utils.py         # 16 tests for finance math functions
 │   ├── test_stock_pipeline.py
+│   ├── test_crypto_pipeline.py
 │   ├── test_edgar_pipeline.py
 │   ├── test_fred_pipeline.py
 │   ├── test_historical_backfill.py
@@ -228,7 +236,7 @@ make setup    # Copy DAGs + create .env from template
 make up       # Start Airflow stack
 make down     # Stop Airflow stack
 make dags     # Copy all pipeline files into ./dags
-make test     # Run pytest (118 tests)
+make test     # Run pytest (158 tests)
 make lint     # flake8 across all source dirs
 make analyze  # Run backtest + portfolio analysis, refresh all CSVs
 make logs     # Tail scheduler + worker logs
