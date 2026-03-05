@@ -67,8 +67,20 @@ def check_weather_pipeline():
         return {'status': 'ERROR', 'message': str(e)}
 
 
+def _is_trading_day(dt=None):
+    """Return True if the given date falls on a weekday (Mon–Fri)."""
+    if dt is None:
+        dt = datetime.now()
+    return dt.weekday() < 5  # 0=Monday, 4=Friday
+
+
 def check_stock_pipeline():
     """Check if stock data was loaded today."""
+    if not _is_trading_day():
+        day_name = datetime.now().strftime('%A')
+        logger.info(f"Stock pipeline: {day_name} is not a trading day — skipping check")
+        return {'status': 'OK', 'message': f'{day_name} — non-trading day'}
+
     try:
         s3, bucket = _s3_client()
         today = get_date_str()

@@ -141,6 +141,24 @@ def capex_efficiency_analysis(results):
     return rows
 
 
+def rolling_sharpe_analysis(results):
+    """Flatten per-stock rolling Sharpe series into rows for CSV export.
+
+    Reads 'rolling_sharpe' from each result dict (list of {date, rolling_sharpe_12m}).
+    Returns a flat list of dicts suitable for writing to rolling_sharpe.csv.
+    """
+    rows = []
+    for r in results:
+        for point in r.get('rolling_sharpe', []):
+            rows.append({
+                'symbol': r['symbol'],
+                'category': r['category'],
+                'date': point['date'],
+                'rolling_sharpe_12m': point['rolling_sharpe_12m'],
+            })
+    return rows
+
+
 def value_chain_summary(results):
     """Full value chain summary with all metrics."""
     logger.info("\n" + "=" * 70)
@@ -185,7 +203,7 @@ def value_chain_summary(results):
     return summary_rows
 
 
-def save_analysis(build_rent, capex_rows, chain_summary, results):
+def save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows):
     """Save analysis as CSV files for Power BI."""
     output_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -195,7 +213,7 @@ def save_analysis(build_rent, capex_rows, chain_summary, results):
     # backtest_results.csv — stock-level detail
     br_path = os.path.join(output_dir, 'backtest_results.csv')
     br_fields = ['symbol', 'category', 'ai_strategy', 'annualized_return', 'annualized_volatility',
-                 'sharpe_ratio', 'months_analyzed', 'start_date', 'end_date',
+                 'sharpe_ratio', 'max_drawdown', 'months_analyzed', 'start_date', 'end_date',
                  'capex_2025_B', 'capex_2026_B', 'ai_pct_of_capex', 'est_ai_spend_2026_B']
     with open(br_path, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=br_fields, extrasaction='ignore')
@@ -206,7 +224,7 @@ def save_analysis(build_rent, capex_rows, chain_summary, results):
     # powerbi_master.csv — primary Power BI source
     pbi_path = os.path.join(output_dir, 'powerbi_master.csv')
     pbi_fields = ['symbol', 'category', 'ai_strategy', 'annualized_return', 'annualized_volatility',
-                  'sharpe_ratio', 'capex_2025_B', 'capex_2026_B', 'ai_pct_of_capex',
+                  'sharpe_ratio', 'max_drawdown', 'capex_2025_B', 'capex_2026_B', 'ai_pct_of_capex',
                   'est_ai_spend_2026_B', 'build_or_rent', 'value_chain_rank']
     with open(pbi_path, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=pbi_fields, extrasaction='ignore')
@@ -267,6 +285,16 @@ def save_analysis(build_rent, capex_rows, chain_summary, results):
         writer.writerows(chain_summary)
     logger.info(f"Saved: {chain_path}")
 
+    # Rolling Sharpe time series
+    if rolling_rows:
+        rolling_path = os.path.join(output_dir, 'rolling_sharpe.csv')
+        with open(rolling_path, 'w', newline='') as f:
+            fields = ['symbol', 'category', 'date', 'rolling_sharpe_12m']
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rolling_rows)
+        logger.info(f"Saved: {rolling_path}")
+
 
 def main():
     results = load_results()
@@ -275,8 +303,9 @@ def main():
     build_rent = build_vs_rent_analysis(results)
     capex_rows = capex_efficiency_analysis(results)
     chain_summary = value_chain_summary(results)
+    rolling_rows = rolling_sharpe_analysis(results)
 
-    save_analysis(build_rent, capex_rows, chain_summary, results)
+    save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
 
     logger.info("\n" + "=" * 70)
     logger.info("HEADLINE: The market rewards AI builders, not AI renters.")
