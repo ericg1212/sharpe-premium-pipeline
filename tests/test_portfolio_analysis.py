@@ -4,6 +4,7 @@ from stock_pipeline.portfolio_analysis import (
     build_vs_rent_analysis,
     capex_efficiency_analysis,
     value_chain_summary,
+    rolling_sharpe_analysis,
     AI_CAPEX,
 )
 
@@ -104,3 +105,46 @@ class TestValueChainSummary:
         expected_sharpe = round((2.369 + 1.979) / 2, 3)
         assert builder_row['avg_sharpe'] == expected_sharpe
         assert builder_row['stock_count'] == 2
+
+
+class TestRollingSharpeCsv:
+    """Tests for rolling_sharpe_analysis()."""
+
+    def test_flattens_rolling_series_into_rows(self):
+        results = [
+            {
+                'symbol': 'META', 'category': 'AI Builder',
+                'rolling_sharpe': [
+                    {'date': '2024-01-31', 'rolling_sharpe_12m': 2.1},
+                    {'date': '2024-02-29', 'rolling_sharpe_12m': 2.3},
+                ],
+            },
+            {
+                'symbol': 'MSFT', 'category': 'AI Integrator',
+                'rolling_sharpe': [
+                    {'date': '2024-01-31', 'rolling_sharpe_12m': 1.5},
+                ],
+            },
+        ]
+        rows = rolling_sharpe_analysis(results)
+
+        assert len(rows) == 3
+        assert all('symbol' in r and 'date' in r and 'rolling_sharpe_12m' in r for r in rows)
+        assert rows[0]['symbol'] == 'META'
+        assert rows[2]['symbol'] == 'MSFT'
+
+    def test_handles_missing_rolling_sharpe_key(self):
+        """Results without a rolling_sharpe key should produce no rows."""
+        results = [{'symbol': 'CRM', 'category': 'Legacy Tech'}]
+        rows = rolling_sharpe_analysis(results)
+        assert rows == []
+
+    def test_category_included_in_each_row(self):
+        results = [
+            {
+                'symbol': 'GOOGL', 'category': 'AI Builder',
+                'rolling_sharpe': [{'date': '2024-06-30', 'rolling_sharpe_12m': 1.8}],
+            }
+        ]
+        rows = rolling_sharpe_analysis(results)
+        assert rows[0]['category'] == 'AI Builder'

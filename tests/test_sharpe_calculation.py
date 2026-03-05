@@ -73,6 +73,24 @@ class TestCalculateSharpe:
         assert result['start_date'] == sample_monthly_prices['date'].min().strftime('%Y-%m-%d')
         assert result['end_date'] == sample_monthly_prices['date'].max().strftime('%Y-%m-%d')
 
+    def test_result_includes_max_drawdown(self, sample_monthly_prices):
+        """Result should include max_drawdown as a non-positive float (percentage)."""
+        result = calculate_sharpe(sample_monthly_prices, 'NVDA')
+
+        assert 'max_drawdown' in result
+        assert isinstance(result['max_drawdown'], float)
+        assert result['max_drawdown'] <= 0.0
+
+    def test_result_includes_rolling_sharpe_series(self, sample_monthly_prices):
+        """Result should include a rolling_sharpe list with date and value per window."""
+        result = calculate_sharpe(sample_monthly_prices, 'NVDA')
+
+        assert 'rolling_sharpe' in result
+        assert isinstance(result['rolling_sharpe'], list)
+        assert len(result['rolling_sharpe']) > 0
+        assert 'date' in result['rolling_sharpe'][0]
+        assert 'rolling_sharpe_12m' in result['rolling_sharpe'][0]
+
     def test_all_stock_symbols_recognized(self):
         """Every symbol in the STOCKS dict should be usable."""
         assert len(STOCKS) == 10
