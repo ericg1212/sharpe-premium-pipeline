@@ -2,13 +2,11 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import requests
-import json
-import boto3
 import logging
 import os
 from time import sleep
-from config import WEATHER_CITY, GLUE_DATABASE, ATHENA_WORKGROUP
-from utils import _s3_client
+from config import WEATHER_CITY
+from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
 from data_quality import validate_weather_data, log_data_stats
 
 # Setup logging
@@ -56,11 +54,10 @@ def extract_weather():
             if not all(field in data for field in required_fields):
                 raise ValueError("Missing required fields in API response")
 
-            # Write raw data to S3 temp location (shared across workers)
             s3, bucket = _s3_client()
-            date_str = datetime.now().strftime('%Y-%m-%d')
+            date_str = get_date_str()
             tmp_key = f"tmp/weather/raw/{date_str}.json"
-            s3.put_object(Bucket=bucket, Key=tmp_key, Body=json.dumps(data), ContentType='application/json')
+            s3_write_json(s3, bucket, tmp_key, data)
             logger.info(f"Raw data written to s3://{bucket}/{tmp_key}")
 
             logger.info(f"Successfully extracted weather data for {city}")
@@ -94,12 +91,10 @@ def extract_weather():
 # Task 2: Transform data with validation
 def transform_weather():
     try:
-        # Read raw data from S3 temp location
         s3, bucket = _s3_client()
-        date_str = datetime.now().strftime('%Y-%m-%d')
+        date_str = get_date_str()
         raw_key = f"tmp/weather/raw/{date_str}.json"
-        raw_obj = s3.get_object(Bucket=bucket, Key=raw_key)
-        data = json.loads(raw_obj['Body'].read())
+        data = s3_read_json(s3, bucket, raw_key)
 
         # Validate data before transformation
         if not data.get('main') or not data.get('weather'):
@@ -124,22 +119,12 @@ def transform_weather():
             logger.error(f"Data quality check failed: {str(e)}")
             raise
 
-        # Write transformed data to S3 temp location
         transformed_key = f"tmp/weather/transformed/{date_str}.json"
-        s3.put_object(
-            Bucket=bucket,
-            Key=transformed_key,
-            Body=json.dumps(transformed),
-            ContentType='application/json',
-        )
+        s3_write_json(s3, bucket, transformed_key, transformed)
         logger.info(f"Transformed data written to s3://{bucket}/{transformed_key}")
 
         logger.info(f"Successfully transformed weather data: {transformed}")
         return transformed
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON in raw data: {str(e)}")
-        raise
 
     except Exception as e:
         logger.error(f"Transformation failed: {str(e)}")
@@ -151,52 +136,25 @@ def load_to_s3():
     try:
         s3, bucket = _s3_client()
 
-        # Read transformed data from S3 temp location
-        date_str = datetime.now().strftime('%Y-%m-%d')
+        date_str = get_date_str()
         transformed_key = f"tmp/weather/transformed/{date_str}.json"
-        transformed_obj = s3.get_object(Bucket=bucket, Key=transformed_key)
-        data = json.loads(transformed_obj['Body'].read())
+        data = s3_read_json(s3, bucket, transformed_key)
 
-        # Upload to S3
-        timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        key = f"weather/date={date_str}/{timestamp_str}.json"
-
-        s3.put_object(
-            Bucket=bucket,
-            Key=key,
-            Body=json.dumps(data),
-            ContentType='application/json'
-        )
-
+        timestamp_str = get_date_str('timestamp')
+        key = f"weather/date={date_str}/{timestamp_str}.parquet"
+        s3_write_parquet(s3, bucket, key, [data])  # wrap single record in list for Parquet
         logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
 
         # Verify upload
         response = s3.head_object(Bucket=bucket, Key=key)
         logger.info(f"Upload verified. File size: {response['ContentLength']} bytes")
 
-        # Register partition with Athena so it's queryable immediately
-        athena = boto3.client(
-            'athena',
-            aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-            region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
-        )
+        athena = _athena_client()
         location = f"s3://{bucket}/weather/date={date_str}/"
-        athena.start_query_execution(
-            QueryString=(
-                f"ALTER TABLE weather ADD IF NOT EXISTS "
-                f"PARTITION (date='{date_str}') LOCATION '{location}'"
-            ),
-            QueryExecutionContext={'Database': GLUE_DATABASE},
-            WorkGroup=ATHENA_WORKGROUP,
-        )
+        register_athena_partition(athena, 'weather', 'date', date_str, location)
         logger.info(f"Registered Athena partition date={date_str} for weather")
 
         return f"s3://{bucket}/{key}"
-
-    except boto3.exceptions.S3UploadFailedError as e:
-        logger.error(f"S3 upload failed: {str(e)}")
-        raise
 
     except Exception as e:
         logger.error(f"Upload to S3 failed: {str(e)}")

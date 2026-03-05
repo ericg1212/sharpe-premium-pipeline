@@ -1,6 +1,8 @@
 """Tests for historical_backfill: format_records, write_to_s3, register_partition."""
 
-import json
+import io
+import pytest
+import pyarrow.parquet as pq
 
 from stock_pipeline.historical_backfill import format_records, write_to_s3, register_partition
 
@@ -16,32 +18,31 @@ SAMPLE_RECORDS = [
 # ── format_records tests ───────────────────────────────────────────────────────
 
 class TestFormatRecords:
-    """Tests for format_records() — pure function, no S3 needed."""
+    """Tests for format_records() — returns list of dicts, no I/O."""
 
     def test_adds_symbol_to_every_record(self):
-        ndjson = format_records('NVDA', SAMPLE_RECORDS)
+        records = format_records('NVDA', SAMPLE_RECORDS)
 
-        for line in ndjson.strip().split('\n'):
-            assert json.loads(line)['symbol'] == 'NVDA'
+        for record in records:
+            assert record['symbol'] == 'NVDA'
 
     def test_adds_extracted_at_to_every_record(self):
-        ndjson = format_records('NVDA', SAMPLE_RECORDS)
+        records = format_records('NVDA', SAMPLE_RECORDS)
 
-        for line in ndjson.strip().split('\n'):
-            assert 'extracted_at' in json.loads(line)
+        for record in records:
+            assert 'extracted_at' in record
 
-    def test_output_is_valid_ndjson(self):
-        ndjson = format_records('NVDA', SAMPLE_RECORDS)
+    def test_output_is_list_of_dicts(self):
+        records = format_records('NVDA', SAMPLE_RECORDS)
 
-        lines = ndjson.strip().split('\n')
-        assert len(lines) == len(SAMPLE_RECORDS)
-        for line in lines:
-            json.loads(line)  # raises if invalid JSON
+        assert isinstance(records, list)
+        assert len(records) == len(SAMPLE_RECORDS)
+        for record in records:
+            assert isinstance(record, dict)
 
     def test_preserves_close_and_volume(self):
-        ndjson = format_records('NVDA', SAMPLE_RECORDS)
+        records = format_records('NVDA', SAMPLE_RECORDS)
 
-        records = [json.loads(line) for line in ndjson.strip().split('\n')]
         assert records[0]['close'] == 100.0
         assert records[0]['volume'] == 1000000
         assert records[1]['close'] == 105.5
@@ -50,36 +51,40 @@ class TestFormatRecords:
         nvda = format_records('NVDA', SAMPLE_RECORDS)
         meta = format_records('META', SAMPLE_RECORDS)
 
-        assert json.loads(nvda.split('\n')[0])['symbol'] == 'NVDA'
-        assert json.loads(meta.split('\n')[0])['symbol'] == 'META'
+        assert nvda[0]['symbol'] == 'NVDA'
+        assert meta[0]['symbol'] == 'META'
 
 
 # ── write_to_s3 tests ──────────────────────────────────────────────────────────
 
 class TestWriteToS3:
-    """Tests for write_to_s3() — writes NDJSON to mocked S3."""
+    """Tests for write_to_s3() — writes Parquet to mocked S3."""
 
     def test_writes_to_correct_partition_key(self, s3_client):
-        bucket, key = write_to_s3('NVDA', 'body content')
+        records = format_records('NVDA', SAMPLE_RECORDS)
+        bucket, key = write_to_s3('NVDA', records)
 
-        assert key == 'historical_prices/symbol=NVDA/monthly.json'
+        assert key == 'historical_prices/symbol=NVDA/monthly.parquet'
 
     def test_returns_correct_bucket_name(self, s3_client):
-        bucket, key = write_to_s3('NVDA', 'body content')
+        records = format_records('NVDA', SAMPLE_RECORDS)
+        bucket, key = write_to_s3('NVDA', records)
 
         assert bucket == 'test-bucket'
 
     def test_object_exists_after_write(self, s3_client):
-        write_to_s3('NVDA', 'body content')
+        records = format_records('NVDA', SAMPLE_RECORDS)
+        write_to_s3('NVDA', records)
 
-        obj = s3_client.get_object(
-            Bucket='test-bucket', Key='historical_prices/symbol=NVDA/monthly.json'
-        )
-        assert obj['Body'].read().decode() == 'body content'
+        body = s3_client.get_object(
+            Bucket='test-bucket', Key='historical_prices/symbol=NVDA/monthly.parquet'
+        )['Body'].read()
+        result = pq.read_table(io.BytesIO(body)).to_pylist()
+        assert len(result) == 3
 
     def test_different_symbols_write_to_different_keys(self, s3_client):
-        write_to_s3('NVDA', 'nvda data')
-        write_to_s3('META', 'meta data')
+        write_to_s3('NVDA', format_records('NVDA', SAMPLE_RECORDS))
+        write_to_s3('META', format_records('META', SAMPLE_RECORDS))
 
         objects = s3_client.list_objects_v2(
             Bucket='test-bucket', Prefix='historical_prices/'

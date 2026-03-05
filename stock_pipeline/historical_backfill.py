@@ -15,14 +15,12 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import json
 import logging
-import boto3
 import requests
 from datetime import datetime
 from time import sleep
 from config import STOCKS, GLUE_DATABASE, ATHENA_WORKGROUP, RATE_LIMIT_DELAY
-from utils import _s3_client
+from utils import _s3_client, _athena_client, s3_write_parquet
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -61,39 +59,34 @@ def fetch_monthly_prices(symbol):
 
 
 def format_records(symbol, records):
-    """Add symbol + extracted_at to each record. Return NDJSON string."""
+    """Add symbol + extracted_at to each record. Return list of dicts."""
     extracted_at = datetime.now().isoformat()
-    enriched = []
-    for r in records:
-        enriched.append({
+    return [
+        {
             'symbol': symbol,
             'date': r['date'],
             'close': r['close'],
             'volume': r['volume'],
             'extracted_at': extracted_at,
-        })
-    return '\n'.join(json.dumps(r) for r in enriched)
+        }
+        for r in records
+    ]
 
 
-def write_to_s3(symbol, body):
-    """Write NDJSON body to s3://bucket/historical_prices/symbol={symbol}/monthly.json."""
+def write_to_s3(symbol, records):
+    """Write records as Parquet to s3://bucket/historical_prices/symbol={symbol}/monthly.parquet."""
     s3, bucket = _s3_client()
-    key = f"historical_prices/symbol={symbol}/monthly.json"
-    s3.put_object(Bucket=bucket, Key=key, Body=body, ContentType='application/json')
+    key = f"historical_prices/symbol={symbol}/monthly.parquet"
+    s3_write_parquet(s3, bucket, key, records)
     logger.info(f"Written to s3://{bucket}/{key}")
     return bucket, key
 
 
 def register_partition(symbol, bucket):
     """Register symbol partition with Athena so the data is immediately queryable."""
-    athena = boto3.client(
-        'athena',
-        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-        region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'),
-    )
+    athena = _athena_client()
     location = f"s3://{bucket}/historical_prices/symbol={symbol}/"
-    athena.start_query_execution(
+    response = athena.start_query_execution(
         QueryString=(
             f"ALTER TABLE historical_prices ADD IF NOT EXISTS "
             f"PARTITION (symbol='{symbol}') LOCATION '{location}'"
@@ -101,7 +94,10 @@ def register_partition(symbol, bucket):
         QueryExecutionContext={'Database': GLUE_DATABASE},
         WorkGroup=ATHENA_WORKGROUP,
     )
-    logger.info(f"Registered Athena partition symbol={symbol}")
+    logger.info(
+        f"Athena query {response['QueryExecutionId']} submitted: "
+        f"historical_prices symbol={symbol}"
+    )
 
 
 def run_backfill():
@@ -115,8 +111,8 @@ def run_backfill():
     for i, symbol in enumerate(symbols):
         try:
             records = fetch_monthly_prices(symbol)
-            body = format_records(symbol, records)
-            bucket, key = write_to_s3(symbol, body)
+            enriched = format_records(symbol, records)
+            bucket, key = write_to_s3(symbol, enriched)
             register_partition(symbol, bucket)
             succeeded.append(symbol)
             logger.info(f"[{i+1}/{len(symbols)}] {symbol} complete")

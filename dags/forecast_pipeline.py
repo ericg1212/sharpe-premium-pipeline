@@ -2,12 +2,10 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import requests
-import json
-import boto3
 import logging
 import os
-from config import WEATHER_CITY, GLUE_DATABASE, ATHENA_WORKGROUP
-from utils import _s3_client
+from config import WEATHER_CITY
+from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
 from data_quality import log_data_stats
 
 logger = logging.getLogger(__name__)
@@ -45,11 +43,10 @@ def extract_forecast():
     if 'list' not in data:
         raise ValueError(f"Unexpected API response: {list(data.keys())}")
 
-    # Write raw data to S3 temp location (shared across workers)
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
     tmp_key = f"tmp/forecast/raw/{date_str}.json"
-    s3.put_object(Bucket=bucket, Key=tmp_key, Body=json.dumps(data), ContentType='application/json')
+    s3_write_json(s3, bucket, tmp_key, data)
     logger.info(f"Raw data written to s3://{bucket}/{tmp_key}")
 
     logger.info(f"Extracted {len(data['list'])} forecast periods for {city}")
@@ -57,12 +54,10 @@ def extract_forecast():
 
 
 def transform_forecast():
-    # Read raw data from S3 temp location
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
     raw_key = f"tmp/forecast/raw/{date_str}.json"
-    raw_obj = s3.get_object(Bucket=bucket, Key=raw_key)
-    data = json.loads(raw_obj['Body'].read())
+    data = s3_read_json(s3, bucket, raw_key)
 
     city = data.get('city', {}).get('name', WEATHER_CITY)
     records = []
@@ -80,10 +75,8 @@ def transform_forecast():
         }
         records.append(record)
 
-    # Write transformed NDJSON to S3 temp location
     transformed_key = f"tmp/forecast/transformed/{date_str}.json"
-    ndjson_body = '\n'.join(json.dumps(r) for r in records)
-    s3.put_object(Bucket=bucket, Key=transformed_key, Body=ndjson_body, ContentType='application/json')
+    s3_write_json(s3, bucket, transformed_key, records)
     logger.info(f"Transformed data written to s3://{bucket}/{transformed_key}")
 
     log_data_stats(records, "forecast_data")
@@ -94,35 +87,20 @@ def transform_forecast():
 def load_to_s3():
     s3, bucket = _s3_client()
 
-    # Read transformed NDJSON from S3 temp location
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
     transformed_key = f"tmp/forecast/transformed/{date_str}.json"
-    transformed_obj = s3.get_object(Bucket=bucket, Key=transformed_key)
-    data = transformed_obj['Body'].read()
+    data = s3_read_json(s3, bucket, transformed_key)
 
-    timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    key = f"forecast/date={date_str}/{timestamp_str}.json"
-
-    s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType='application/json')
+    timestamp_str = get_date_str('timestamp')
+    key = f"forecast/date={date_str}/{timestamp_str}.parquet"
+    s3_write_parquet(s3, bucket, key, data)
 
     response = s3.head_object(Bucket=bucket, Key=key)
     logger.info(f"Uploaded to s3://{bucket}/{key} ({response['ContentLength']} bytes)")
 
-    athena = boto3.client(
-        'athena',
-        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-        region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'),
-    )
+    athena = _athena_client()
     location = f"s3://{bucket}/forecast/date={date_str}/"
-    athena.start_query_execution(
-        QueryString=(
-            f"ALTER TABLE forecast ADD IF NOT EXISTS "
-            f"PARTITION (date='{date_str}') LOCATION '{location}'"
-        ),
-        QueryExecutionContext={'Database': GLUE_DATABASE},
-        WorkGroup=ATHENA_WORKGROUP,
-    )
+    register_athena_partition(athena, 'forecast', 'date', date_str, location)
     logger.info(f"Registered Athena partition date={date_str} for forecast")
 
     return f"s3://{bucket}/{key}"

@@ -1,9 +1,11 @@
 """Tests for stock_pipeline DAG: transform and load functions."""
 
+import io
 import json
 import pytest
 from datetime import datetime
 from botocore.exceptions import ClientError
+import pyarrow.parquet as pq
 
 from stock_pipeline.stock_pipeline import transform_stock_data, load_to_s3
 
@@ -143,17 +145,16 @@ class TestLoadStockToS3:
         objects = s3_transformed_stocks.list_objects_v2(Bucket='test-bucket', Prefix='stocks/')
         assert objects['KeyCount'] == 1
 
-    def test_uploaded_content_is_ndjson(self, s3_transformed_stocks):
-        """Each line of the S3 payload should be valid JSON with a symbol field."""
+    def test_uploaded_content_is_parquet(self, s3_transformed_stocks):
+        """S3 payload should be valid Parquet with symbol and price columns."""
         load_to_s3()
 
         objects = s3_transformed_stocks.list_objects_v2(Bucket='test-bucket', Prefix='stocks/')
         key = objects['Contents'][0]['Key']
-        body = s3_transformed_stocks.get_object(Bucket='test-bucket', Key=key)['Body'].read().decode()
+        body = s3_transformed_stocks.get_object(Bucket='test-bucket', Key=key)['Body'].read()
 
-        lines = body.strip().split('\n')
-        assert len(lines) == 2
-        for line in lines:
-            record = json.loads(line)
+        records = pq.read_table(io.BytesIO(body)).to_pylist()
+        assert len(records) == 2
+        for record in records:
             assert 'symbol' in record
             assert 'price' in record

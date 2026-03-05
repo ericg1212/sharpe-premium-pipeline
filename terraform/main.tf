@@ -56,14 +56,15 @@ resource "aws_glue_catalog_table" "stocks" {
   name          = "stocks"
   database_name = aws_glue_catalog_database.main.name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { "classification" = "json" }
+  parameters    = { "classification" = "parquet", "parquet.compress" = "SNAPPY" }
 
   storage_descriptor {
     location      = "s3://${var.s3_bucket_name}/stocks/"
-    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     ser_de_info {
-      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters            = { "serialization.format" = "1" }
     }
     columns {
       name = "symbol"
@@ -100,14 +101,15 @@ resource "aws_glue_catalog_table" "crypto" {
   name          = "crypto"
   database_name = aws_glue_catalog_database.main.name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { "classification" = "json" }
+  parameters    = { "classification" = "parquet", "parquet.compress" = "SNAPPY" }
 
   storage_descriptor {
     location      = "s3://${var.s3_bucket_name}/crypto/"
-    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     ser_de_info {
-      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters            = { "serialization.format" = "1" }
     }
     columns {
       name = "symbol"
@@ -132,14 +134,15 @@ resource "aws_glue_catalog_table" "weather" {
   name          = "weather"
   database_name = aws_glue_catalog_database.main.name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { "classification" = "json" }
+  parameters    = { "classification" = "parquet", "parquet.compress" = "SNAPPY" }
 
   storage_descriptor {
     location      = "s3://${var.s3_bucket_name}/weather/"
-    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     ser_de_info {
-      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters            = { "serialization.format" = "1" }
     }
     columns {
       name = "city"
@@ -180,14 +183,15 @@ resource "aws_glue_catalog_table" "forecast" {
   name          = "forecast"
   database_name = aws_glue_catalog_database.main.name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { "classification" = "json" }
+  parameters    = { "classification" = "parquet", "parquet.compress" = "SNAPPY" }
 
   storage_descriptor {
     location      = "s3://${var.s3_bucket_name}/forecast/"
-    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     ser_de_info {
-      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters            = { "serialization.format" = "1" }
     }
     columns {
       name = "city"
@@ -229,20 +233,21 @@ resource "aws_glue_catalog_table" "forecast" {
 }
 
 # SEC EDGAR fundamentals — partitioned by cik + year
-# S3 path: fundamentals/cik={cik}/year={year}/data.json
+# S3 path: fundamentals/cik={cik}/year={year}/data.parquet
 
 resource "aws_glue_catalog_table" "fundamentals" {
   name          = "fundamentals"
   database_name = aws_glue_catalog_database.main.name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { "classification" = "json" }
+  parameters    = { "classification" = "parquet", "parquet.compress" = "SNAPPY" }
 
   storage_descriptor {
     location      = "s3://${var.s3_bucket_name}/fundamentals/"
-    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     ser_de_info {
-      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters            = { "serialization.format" = "1" }
     }
     columns {
       name = "symbol"
@@ -284,20 +289,21 @@ resource "aws_glue_catalog_table" "fundamentals" {
 }
 
 # FRED macro indicators — partitioned by series + year
-# S3 path: macro_indicators/series={series_id}/year={year}/data.json
+# S3 path: macro_indicators/series={series_id}/year={year}/data.parquet
 
 resource "aws_glue_catalog_table" "macro_indicators" {
   name          = "macro_indicators"
   database_name = aws_glue_catalog_database.main.name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { "classification" = "json" }
+  parameters    = { "classification" = "parquet", "parquet.compress" = "SNAPPY" }
 
   storage_descriptor {
     location      = "s3://${var.s3_bucket_name}/macro_indicators/"
-    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     ser_de_info {
-      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters            = { "serialization.format" = "1" }
     }
     columns {
       name = "series_id"
@@ -345,14 +351,15 @@ resource "aws_glue_catalog_table" "historical_prices" {
   name          = "historical_prices"
   database_name = aws_glue_catalog_database.main.name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { "classification" = "json" }
+  parameters    = { "classification" = "parquet", "parquet.compress" = "SNAPPY" }
 
   storage_descriptor {
     location      = "s3://${var.s3_bucket_name}/historical_prices/"
-    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
-    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     ser_de_info {
-      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters            = { "serialization.format" = "1" }
     }
     columns {
       name = "date"

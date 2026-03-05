@@ -1,9 +1,11 @@
 """Tests for crypto_pipeline DAG: transform and load functions."""
 
+import io
 import json
 import pytest
 from datetime import datetime
 from botocore.exceptions import ClientError
+import pyarrow.parquet as pq
 
 from crypto_pipeline.crypto_pipeline import transform_crypto_data, load_to_s3
 
@@ -41,13 +43,12 @@ def s3_raw_crypto(s3_client):
 
 @pytest.fixture
 def s3_transformed_crypto(s3_client):
-    """Seed NDJSON crypto data into mocked S3 at the tmp/crypto/transformed/ key."""
+    """Seed JSON array crypto data into mocked S3 at the tmp/crypto/transformed/ key."""
     date_str = datetime.now().strftime('%Y-%m-%d')
-    ndjson_body = '\n'.join(json.dumps(r) for r in TRANSFORMED_CRYPTOS)
     s3_client.put_object(
         Bucket='test-bucket',
         Key=f'tmp/crypto/transformed/{date_str}.json',
-        Body=ndjson_body,
+        Body=json.dumps(TRANSFORMED_CRYPTOS),
     )
     yield s3_client
 
@@ -69,18 +70,18 @@ class TestTransformCryptoData:
         assert len(result) == 3
         assert {r['symbol'] for r in result} == {'BTC', 'ETH', 'SOL'}
 
-    def test_output_written_as_ndjson_to_s3(self, s3_raw_crypto):
-        """Transform writes NDJSON to S3 tmp key."""
+    def test_output_written_as_json_array_to_s3(self, s3_raw_crypto):
+        """Transform writes a JSON array to the S3 tmp key."""
         transform_crypto_data()
 
         date_str = datetime.now().strftime('%Y-%m-%d')
         obj = s3_raw_crypto.get_object(
             Bucket='test-bucket', Key=f'tmp/crypto/transformed/{date_str}.json'
         )
-        lines = obj['Body'].read().decode().strip().split('\n')
-        assert len(lines) == 3
-        for line in lines:
-            record = json.loads(line)
+        records = json.loads(obj['Body'].read().decode())
+        assert isinstance(records, list)
+        assert len(records) == 3
+        for record in records:
             assert 'symbol' in record
             assert 'price' in record
 
@@ -124,8 +125,8 @@ class TestLoadCryptoToS3:
 
         objects = s3_transformed_crypto.list_objects_v2(Bucket='test-bucket', Prefix='crypto/')
         key = objects['Contents'][0]['Key']
-        body = s3_transformed_crypto.get_object(Bucket='test-bucket', Key=key)['Body'].read().decode()
+        body = s3_transformed_crypto.get_object(Bucket='test-bucket', Key=key)['Body'].read()
 
-        lines = body.strip().split('\n')
-        symbols = {json.loads(line)['symbol'] for line in lines}
+        records = pq.read_table(io.BytesIO(body)).to_pylist()
+        symbols = {r['symbol'] for r in records}
         assert symbols == {'BTC', 'ETH', 'SOL'}

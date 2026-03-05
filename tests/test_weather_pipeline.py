@@ -1,9 +1,11 @@
 """Tests for weather_pipeline DAG: transform and load functions."""
 
+import io
 import json
 import pytest
 from datetime import datetime
 from botocore.exceptions import ClientError
+import pyarrow.parquet as pq
 
 from weather_pipeline.weather_pipeline import transform_weather, load_to_s3
 
@@ -129,8 +131,8 @@ class TestLoadWeatherToS3:
 
         objects = s3_transformed_weather.list_objects_v2(Bucket='test-bucket', Prefix='weather/')
         key = objects['Contents'][0]['Key']
-        body = s3_transformed_weather.get_object(Bucket='test-bucket', Key=key)['Body'].read().decode()
-        record = json.loads(body)
+        body = s3_transformed_weather.get_object(Bucket='test-bucket', Key=key)['Body'].read()
+        record = pq.read_table(io.BytesIO(body)).to_pylist()[0]
 
         assert record['city'] == 'Brooklyn'
         assert record['description'] == 'light rain'

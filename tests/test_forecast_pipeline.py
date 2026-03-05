@@ -1,9 +1,11 @@
 """Tests for forecast_pipeline DAG: transform and load functions."""
 
+import io
 import json
 import pytest
 from datetime import datetime
 from botocore.exceptions import ClientError
+import pyarrow.parquet as pq
 
 from forecast_pipeline.forecast_pipeline import transform_forecast, load_to_s3
 
@@ -57,13 +59,12 @@ def s3_raw_forecast(s3_client):
 
 @pytest.fixture
 def s3_transformed_forecast(s3_client):
-    """Seed NDJSON forecast data into mocked S3 at the tmp/forecast/transformed/ key."""
+    """Seed JSON array forecast data into mocked S3 at the tmp/forecast/transformed/ key."""
     date_str = datetime.now().strftime('%Y-%m-%d')
-    ndjson_body = '\n'.join(json.dumps(r) for r in TRANSFORMED_FORECAST)
     s3_client.put_object(
         Bucket='test-bucket',
         Key=f'tmp/forecast/transformed/{date_str}.json',
-        Body=ndjson_body,
+        Body=json.dumps(TRANSFORMED_FORECAST),
     )
     yield s3_client
 
@@ -77,17 +78,17 @@ class TestTransformForecast:
         count = transform_forecast()
         assert count == 2
 
-    def test_output_written_as_ndjson_to_s3(self, s3_raw_forecast):
+    def test_output_written_as_json_array_to_s3(self, s3_raw_forecast):
         transform_forecast()
 
         date_str = datetime.now().strftime('%Y-%m-%d')
         obj = s3_raw_forecast.get_object(
             Bucket='test-bucket', Key=f'tmp/forecast/transformed/{date_str}.json'
         )
-        lines = [line for line in obj['Body'].read().decode().strip().split('\n') if line]
-        assert len(lines) == 2
-        for line in lines:
-            record = json.loads(line)
+        records = json.loads(obj['Body'].read().decode())
+        assert isinstance(records, list)
+        assert len(records) == 2
+        for record in records:
             assert 'city' in record
             assert 'forecast_time' in record
             assert 'temperature' in record
@@ -99,7 +100,7 @@ class TestTransformForecast:
         obj = s3_raw_forecast.get_object(
             Bucket='test-bucket', Key=f'tmp/forecast/transformed/{date_str}.json'
         )
-        record = json.loads(obj['Body'].read().decode().split('\n')[0])
+        record = json.loads(obj['Body'].read().decode())[0]
 
         assert record['city'] == 'Brooklyn'
         assert record['forecast_time'] == '2026-02-19 06:00:00'
@@ -137,8 +138,9 @@ class TestLoadForecastToS3:
 
         objects = s3_transformed_forecast.list_objects_v2(Bucket='test-bucket', Prefix='forecast/')
         key = objects['Contents'][0]['Key']
-        body = s3_transformed_forecast.get_object(Bucket='test-bucket', Key=key)['Body'].read().decode()
-        record = json.loads(body.strip().split('\n')[0])
+        body = s3_transformed_forecast.get_object(Bucket='test-bucket', Key=key)['Body'].read()
+        records = pq.read_table(io.BytesIO(body)).to_pylist()
+        record = records[0]
 
         assert record['city'] == 'Brooklyn'
         assert 'forecast_time' in record

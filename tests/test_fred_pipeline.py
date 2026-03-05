@@ -1,9 +1,11 @@
 """Tests for fred_pipeline: transform_fred_data and load_to_s3."""
 
+import io
 import json
 import pytest
 from datetime import datetime
 from botocore.exceptions import ClientError
+import pyarrow.parquet as pq
 
 from fred_pipeline.fred_pipeline import transform_fred_data, load_to_s3
 
@@ -158,7 +160,7 @@ class TestLoadFredToS3:
         assert objects['KeyCount'] >= 1
 
     def test_partition_key_contains_series_and_year(self, s3_transformed_fred):
-        """Keys follow macro_indicators/series={id}/year={year}/data.json pattern."""
+        """Keys follow macro_indicators/series={id}/year={year}/data.parquet pattern."""
         load_to_s3()
 
         objects = s3_transformed_fred.list_objects_v2(
@@ -177,8 +179,8 @@ class TestLoadFredToS3:
         )
         assert len(objects['Contents']) == 2
 
-    def test_output_is_ndjson_with_required_fields(self, s3_transformed_fred):
-        """Each line is valid JSON containing series_id and value."""
+    def test_output_is_parquet_with_required_fields(self, s3_transformed_fred):
+        """S3 file is valid Parquet containing series_id and value columns."""
         load_to_s3()
 
         objects = s3_transformed_fred.list_objects_v2(
@@ -187,10 +189,10 @@ class TestLoadFredToS3:
         key = objects['Contents'][0]['Key']
         body = s3_transformed_fred.get_object(
             Bucket='test-bucket', Key=key
-        )['Body'].read().decode()
+        )['Body'].read()
 
-        for line in body.strip().split('\n'):
-            record = json.loads(line)
+        records = pq.read_table(io.BytesIO(body)).to_pylist()
+        for record in records:
             assert 'series_id' in record
             assert 'value' in record
 

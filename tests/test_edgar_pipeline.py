@@ -1,9 +1,11 @@
 """Tests for edgar_pipeline: _extract_annual_records, transform_fundamentals, load_to_s3."""
 
+import io
 import json
 import pytest
 from datetime import datetime
 from botocore.exceptions import ClientError
+import pyarrow.parquet as pq
 
 from edgar_pipeline.edgar_pipeline import _extract_annual_records, transform_fundamentals, load_to_s3
 
@@ -286,8 +288,8 @@ class TestLoadEdgarToS3:
         )
         assert len(objects['Contents']) == 2
 
-    def test_output_is_ndjson_with_required_fields(self, s3_transformed_edgar):
-        """Each line of the S3 file is valid JSON containing symbol and capex_usd."""
+    def test_output_is_parquet_with_required_fields(self, s3_transformed_edgar):
+        """S3 file is valid Parquet containing symbol and capex_usd columns."""
         load_to_s3()
 
         objects = s3_transformed_edgar.list_objects_v2(
@@ -296,15 +298,15 @@ class TestLoadEdgarToS3:
         key = objects['Contents'][0]['Key']
         body = s3_transformed_edgar.get_object(
             Bucket='test-bucket', Key=key
-        )['Body'].read().decode()
+        )['Body'].read()
 
-        for line in body.strip().split('\n'):
-            record = json.loads(line)
+        records = pq.read_table(io.BytesIO(body)).to_pylist()
+        for record in records:
             assert 'symbol' in record
             assert 'capex_usd' in record
 
     def test_partition_key_contains_cik_and_year(self, s3_transformed_edgar):
-        """S3 keys follow fundamentals/cik={cik}/year={year}/data.json pattern."""
+        """S3 keys follow fundamentals/cik={cik}/year={year}/data.parquet pattern."""
         load_to_s3()
 
         objects = s3_transformed_edgar.list_objects_v2(

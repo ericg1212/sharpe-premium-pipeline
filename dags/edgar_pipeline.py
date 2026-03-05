@@ -14,15 +14,15 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import json
 import logging
-import boto3
 import requests
+from collections import defaultdict
 from datetime import datetime
+from time import sleep
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from config import EDGAR_CIKS, GLUE_DATABASE, ATHENA_WORKGROUP
-from utils import _s3_client
+from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +69,9 @@ def _extract_annual_records(facts, tag):
 # Task 1: Extract raw company facts from EDGAR for all 4 companies
 def extract_edgar_data():
     all_raw = {}
+    symbols = list(EDGAR_CIKS.items())
 
-    for symbol, cik in EDGAR_CIKS.items():
+    for i, (symbol, cik) in enumerate(symbols):
         try:
             url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
             logger.info(f"Fetching EDGAR data for {symbol} (CIK {cik})")
@@ -89,30 +90,27 @@ def extract_edgar_data():
             }
             logger.info(f"{symbol}: raw facts fetched successfully")
 
+            # Rate limit: EDGAR throttles at ~10 req/sec; sleep between companies
+            if i < len(symbols) - 1:
+                sleep(1)
+
         except Exception as e:
             logger.error(f"{symbol} EDGAR fetch failed: {str(e)}")
             raise
 
-    # Write raw data to S3 tmp location
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
     tmp_key = f"tmp/edgar/raw/{date_str}.json"
-    s3.put_object(
-        Bucket=bucket,
-        Key=tmp_key,
-        Body=json.dumps(all_raw),
-        ContentType='application/json',
-    )
+    s3_write_json(s3, bucket, tmp_key, all_raw)
     logger.info(f"Raw EDGAR data written to s3://{bucket}/{tmp_key}")
 
 
 # Task 2: Transform — extract annual capex + revenue per company per year
 def transform_fundamentals():
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
 
-    raw_obj = s3.get_object(Bucket=bucket, Key=f"tmp/edgar/raw/{date_str}.json")
-    all_raw = json.loads(raw_obj['Body'].read())
+    all_raw = s3_read_json(s3, bucket, f"tmp/edgar/raw/{date_str}.json")
 
     extracted_at = datetime.now().isoformat()
     records = []
@@ -137,7 +135,10 @@ def transform_fundamentals():
                 break
 
         if not revenue_filings:
-            logger.warning(f"{symbol}: no annual revenue records found")
+            logger.warning(
+                f"{symbol}: no annual revenue records found "
+                f"(tried: {', '.join(REVENUE_TAGS)})"
+            )
 
         # Index revenue by fiscal year for easy lookup
         revenue_by_year = {f['fy']: f['val'] for f in revenue_filings}
@@ -168,50 +169,33 @@ def transform_fundamentals():
     if not records:
         raise Exception("No fundamental records extracted")
 
-    # Write transformed records to S3 tmp location
     transformed_key = f"tmp/edgar/transformed/{date_str}.json"
-    s3.put_object(
-        Bucket=bucket,
-        Key=transformed_key,
-        Body=json.dumps(records),
-        ContentType='application/json',
-    )
+    s3_write_json(s3, bucket, transformed_key, records)
     logger.info(f"Transformed {len(records)} records to s3://{bucket}/{transformed_key}")
 
 
 # Task 3: Load — write per-company per-year to S3, register Athena partitions
 def load_to_s3():
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
 
-    transformed_obj = s3.get_object(
-        Bucket=bucket, Key=f"tmp/edgar/transformed/{date_str}.json"
-    )
-    records = json.loads(transformed_obj['Body'].read())
+    records = s3_read_json(s3, bucket, f"tmp/edgar/transformed/{date_str}.json")
 
     # Group records by (cik, year) — one S3 file per partition
-    from collections import defaultdict
     partitions = defaultdict(list)
     for record in records:
         partitions[(record['cik'], record['year'])].append(record)
 
-    athena = boto3.client(
-        'athena',
-        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-        region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'),
-    )
+    athena = _athena_client()
 
     for (cik, year), partition_records in partitions.items():
-        key = f"fundamentals/cik={cik}/year={year}/data.json"
-        body = '\n'.join(json.dumps(r) for r in partition_records)
-
-        s3.put_object(Bucket=bucket, Key=key, Body=body, ContentType='application/json')
+        key = f"fundamentals/cik={cik}/year={year}/data.parquet"
+        s3_write_parquet(s3, bucket, key, partition_records)
         logger.info(f"Written {len(partition_records)} records to s3://{bucket}/{key}")
 
-        # Register partition with Athena
+        # Multi-key partition — register directly (two partition columns)
         location = f"s3://{bucket}/fundamentals/cik={cik}/year={year}/"
-        athena.start_query_execution(
+        response = athena.start_query_execution(
             QueryString=(
                 f"ALTER TABLE fundamentals ADD IF NOT EXISTS "
                 f"PARTITION (cik='{cik}', year='{year}') LOCATION '{location}'"
@@ -219,7 +203,10 @@ def load_to_s3():
             QueryExecutionContext={'Database': GLUE_DATABASE},
             WorkGroup=ATHENA_WORKGROUP,
         )
-        logger.info(f"Registered Athena partition cik={cik}/year={year}")
+        logger.info(
+            f"Athena query {response['QueryExecutionId']} submitted: "
+            f"fundamentals cik={cik}/year={year}"
+        )
 
     logger.info(f"Load complete. {len(partitions)} partitions written.")
 

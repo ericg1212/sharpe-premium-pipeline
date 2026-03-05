@@ -19,16 +19,14 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import json
 import logging
-import boto3
 import requests
 from datetime import datetime
 from collections import defaultdict
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from config import GLUE_DATABASE, ATHENA_WORKGROUP, FRED_SERIES
-from utils import _s3_client
+from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_ndjson
 
 logger = logging.getLogger(__name__)
 
@@ -85,24 +83,18 @@ def extract_fred_data():
         logger.info(f"{series_id}: {len(data['observations'])} observations fetched")
 
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
     tmp_key = f"tmp/fred/raw/{date_str}.json"
-    s3.put_object(
-        Bucket=bucket,
-        Key=tmp_key,
-        Body=json.dumps(all_raw),
-        ContentType='application/json',
-    )
+    s3_write_json(s3, bucket, tmp_key, all_raw)
     logger.info(f"Raw FRED data written to s3://{bucket}/{tmp_key}")
 
 
 # Task 2: Transform — parse observations, drop missing values, add metadata
 def transform_fred_data():
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
 
-    raw_obj = s3.get_object(Bucket=bucket, Key=f"tmp/fred/raw/{date_str}.json")
-    all_raw = json.loads(raw_obj['Body'].read())
+    all_raw = s3_read_json(s3, bucket, f"tmp/fred/raw/{date_str}.json")
 
     extracted_at = datetime.now().isoformat()
     records = []
@@ -138,43 +130,28 @@ def transform_fred_data():
     if not records:
         raise Exception("No FRED records extracted — all values missing or API error")
 
-    transformed_key = f"tmp/fred/transformed/{datetime.now().strftime('%Y-%m-%d')}.json"
-    s3.put_object(
-        Bucket=bucket,
-        Key=transformed_key,
-        Body=json.dumps(records),
-        ContentType='application/json',
-    )
+    transformed_key = f"tmp/fred/transformed/{get_date_str()}.json"
+    s3_write_json(s3, bucket, transformed_key, records)
     logger.info(f"Transformed {len(records)} FRED records to s3://{bucket}/{transformed_key}")
 
 
 # Task 3: Load — partition by series + year, register Athena partitions
 def load_to_s3():
     s3, bucket = _s3_client()
-    date_str = datetime.now().strftime('%Y-%m-%d')
+    date_str = get_date_str()
 
-    transformed_obj = s3.get_object(
-        Bucket=bucket, Key=f"tmp/fred/transformed/{date_str}.json"
-    )
-    records = json.loads(transformed_obj['Body'].read())
+    records = s3_read_json(s3, bucket, f"tmp/fred/transformed/{date_str}.json")
 
     # Group by (series_id, year) — one S3 file per partition
     partitions = defaultdict(list)
     for record in records:
         partitions[(record['series_id'], record['year'])].append(record)
 
-    athena = boto3.client(
-        'athena',
-        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
-        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-        region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'),
-    )
+    athena = _athena_client()
 
     for (series_id, year), partition_records in partitions.items():
         key = f"macro_indicators/series={series_id}/year={year}/data.json"
-        body = '\n'.join(json.dumps(r) for r in partition_records)
-
-        s3.put_object(Bucket=bucket, Key=key, Body=body, ContentType='application/json')
+        s3_write_ndjson(s3, bucket, key, partition_records)
         logger.info(f"Written {len(partition_records)} records to s3://{bucket}/{key}")
 
         location = f"s3://{bucket}/macro_indicators/series={series_id}/year={year}/"
