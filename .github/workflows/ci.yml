@@ -36,10 +36,22 @@ jobs:
             "pytest>=7.4.0,<9.0.0" \
             "moto[s3,athena]>=5.0.0,<6.0.0" \
             "responses>=0.25.0,<1.0.0" \
-            "flake8>=7.0.0,<8.0.0"
+            "flake8>=7.0.0,<8.0.0" \
+            "bandit>=1.7.0,<2.0.0" \
+            "pip-audit>=2.7.0,<3.0.0"
 
       - name: Lint
         run: flake8 utils.py stock_pipeline/ crypto_pipeline/ weather_pipeline/ edgar_pipeline/ fred_pipeline/ analysis_pipeline/ monitoring/ tests/
+
+      - name: Security scan (bandit)
+        run: |
+          bandit -r utils.py stock_pipeline/ crypto_pipeline/ weather_pipeline/ \
+            edgar_pipeline/ fred_pipeline/ analysis_pipeline/ monitoring/ \
+            --severity-level medium -q
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: pip-audit -r requirements.txt
+        continue-on-error: true
 
       - name: Terraform fmt check
         run: terraform fmt -check terraform/
