@@ -1,6 +1,24 @@
 # Environment variables and secrets
 .env
+.env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+credentials.json
+credentials.csv
+token.json
+*_rsa
+*_dsa
+*_ecdsa
+*_ed25519
+*.secret
+secrets.yaml
+secrets.yml
+secrets.json
 
 # Claude Code
 .claude/
