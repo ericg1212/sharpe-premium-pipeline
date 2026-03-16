@@ -6,7 +6,10 @@ import logging
 import os
 from time import sleep
 from config import WEATHER_CITY
-from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+from utils import (
+    _s3_client, _athena_client, get_date_str,
+    s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+)
 from data_quality import validate_weather_data, log_data_stats
 
 # Setup logging
