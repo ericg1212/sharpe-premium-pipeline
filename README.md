@@ -155,7 +155,24 @@ All credentials managed via environment variables — zero hardcoded secrets:
 - AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
 - API keys (`ALPHA_VANTAGE_API_KEY`, `OPENWEATHER_API_KEY`, `FRED_API_KEY`)
 - Injected into Airflow containers via Docker Compose `.env` file
-- Global `.gitignore` prevents credential files from being committed
+- Hardened `.gitignore` blocks keys, certs, and credential files from being committed
+
+CI/CD security pipeline on every push:
+- **bandit** — Python static analysis for security issues
+- **pip-audit** — dependency vulnerability scanning
+- **checkov** — Terraform IaC security scanning
+- **CodeQL** — GitHub's semantic code analysis
+- **Semgrep** — SAST rules for common vulnerability patterns
+- **Dependency Review** — flags newly introduced vulnerable packages on PRs
+- **OpenSSF Scorecard** — supply chain security scoring
+- **SBOM** — software bill of materials generated on every push
+
+Repo hardening:
+- Branch protection: CI required, no force push, no direct commits to main, linear history
+- Secret scanning + push protection enabled (blocks commits containing credentials)
+- Dependabot security updates enabled
+- Pre-commit hooks: trailing whitespace, private key detection, secret scanning
+- `SECURITY.md` with vulnerability disclosure policy
 
 ## Project Structure
 
@@ -207,7 +224,13 @@ data-engineering-portfolio/
 │   └── outputs.tf
 ├── docker-compose.yaml               # Airflow cluster (6 containers)
 ├── Makefile                          # make up/down/dags/test/lint/analyze
-├── .github/workflows/ci.yml          # CI: lint + pytest on every push
+├── LICENSE                           # MIT
+├── .github/workflows/ci.yml          # CI: lint, pytest, bandit, pip-audit, checkov, terraform fmt
+├── .github/workflows/codeql.yml      # CodeQL semantic analysis
+├── .github/workflows/scorecard.yml   # OpenSSF Scorecard
+├── .github/workflows/semgrep.yml     # Semgrep SAST
+├── .github/workflows/sbom.yml        # Software bill of materials
+├── .github/workflows/dependency-review.yml  # PR dependency review
 ├── .env.example                      # Credential template
 └── README.md
 ```
