@@ -2,12 +2,15 @@
 
 import json
 import pytest
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 from moto import mock_aws
 import boto3
 import io
 import pyarrow.parquet as pq
-from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_ndjson, s3_write_parquet, register_athena_partition
+from utils import (
+    _s3_client, _athena_client, get_date_str,
+    s3_read_json, s3_write_json, s3_write_ndjson, s3_write_parquet, register_athena_partition
+)
 
 
 class TestS3Client:

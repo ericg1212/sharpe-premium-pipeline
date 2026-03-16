@@ -1,7 +1,6 @@
 """Tests for historical_backfill: format_records, write_to_s3, register_partition."""
 
 import io
-import pytest
 import pyarrow.parquet as pq
 
 from stock_pipeline.historical_backfill import format_records, write_to_s3, register_partition

@@ -1,7 +1,6 @@
 """Tests for finance_utils: calculate_annualized_return, calculate_max_drawdown,
 calculate_beta, calculate_rolling_sharpe."""
 
-import pytest
 from stock_pipeline.finance_utils import (
     calculate_annualized_return,
     calculate_max_drawdown,
