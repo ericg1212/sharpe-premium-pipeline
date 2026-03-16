@@ -3,10 +3,12 @@ from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import requests
 import logging
-import os
 from time import sleep
 from config import CRYPTO_SYMBOLS
-from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+from utils import (
+    _s3_client, _athena_client, get_date_str,
+    s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+)
 from data_quality import log_data_stats
 
 logger = logging.getLogger(__name__)
