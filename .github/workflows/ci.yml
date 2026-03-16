@@ -63,6 +63,9 @@ jobs:
         run: checkov -d terraform/ --framework terraform --quiet --compact
         continue-on-error: true
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
       - name: Terraform fmt check
         run: terraform fmt -check terraform/
 
