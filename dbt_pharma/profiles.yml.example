@@ -1,0 +1,37 @@
+# profiles.yml.example — commit this; copy to profiles.yml (gitignored) for local use.
+# Or place at ~/.dbt/profiles.yml and run dbt without --profiles-dir.
+#
+# Required environment variables:
+#   SNOWFLAKE_ACCOUNT    — e.g. xy12345.us-east-1
+#   SNOWFLAKE_USER       — Snowflake login username
+#   SNOWFLAKE_PASSWORD   — Snowflake login password
+#   SNOWFLAKE_WAREHOUSE  — defaults to COMPUTE_WH
+#   SNOWFLAKE_DATABASE   — defaults to PHARMA_CLIFF
+#   SNOWFLAKE_ROLE       — defaults to SYSADMIN
+
+dbt_pharma:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'SYSADMIN') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'PHARMA_CLIFF') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      schema: STAGING
+      threads: 4
+      client_session_keep_alive: false
+
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'SYSADMIN') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'PHARMA_CLIFF') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      schema: STAGING
+      threads: 8
+      client_session_keep_alive: false

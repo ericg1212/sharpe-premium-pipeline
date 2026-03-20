@@ -32,14 +32,15 @@ S3_STAGE  = os.environ.get("SNOWFLAKE_S3_STAGE", "pharma_s3_stage")  # pre-creat
 DDL_STATEMENTS = {
     "orange_book": """
         CREATE TABLE IF NOT EXISTS RAW.ORANGE_BOOK (
-            appl_type         VARCHAR,
-            appl_no           VARCHAR,
-            product_no        VARCHAR,
-            exclusivity_code  VARCHAR,
-            exclusivity_date  DATE,
-            drug_name         VARCHAR,
-            active_ingredient VARCHAR,
-            _loaded_at        TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+            appl_type            VARCHAR,
+            appl_no              VARCHAR,
+            product_no           VARCHAR,
+            exclusivity_code     VARCHAR,
+            exclusivity_date     DATE,
+            trade_name           VARCHAR,
+            ingredient           VARCHAR,
+            applicant_full_name  VARCHAR,
+            _loaded_at           TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
         )
     """,
     "yfinance": """
@@ -66,6 +67,19 @@ DDL_STATEMENTS = {
             start_date       DATE,
             completion_date  DATE,
             _loaded_at       TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+        )
+    """,
+    "edgar": """
+        CREATE TABLE IF NOT EXISTS RAW.EDGAR (
+            ticker      VARCHAR,
+            concept     VARCHAR,
+            metric      VARCHAR,
+            form        VARCHAR,
+            end_date    DATE,
+            value_usd   BIGINT,
+            filed       DATE,
+            accn        VARCHAR,
+            _loaded_at  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
         )
     """,
 }
@@ -117,6 +131,7 @@ _DEFAULT_PATHS: dict[str, str] = {
     "orange_book":     "raw/orange_book/year={year}/month={month:02d}",
     "yfinance":        "raw/yfinance",
     "clinical_trials": "raw/clinical_trials/year={year}/month={month:02d}",
+    "edgar":           "raw/edgar/year={year}/month={month:02d}",
 }
 
 
@@ -125,8 +140,8 @@ def load_table(table: str, s3_path: str | None = None) -> int:
     Load any RAW table from its S3 Parquet path.
     If s3_path is omitted, uses the default Hive-partitioned path for today.
     """
-    from datetime import datetime
-    now = datetime.utcnow()
+    from datetime import UTC, datetime
+    now = datetime.now(UTC)
     path = s3_path or _DEFAULT_PATHS[table].format(
         year=now.year, month=now.month
     )
@@ -148,8 +163,12 @@ def load_clinical_trials(s3_path: str | None = None) -> int:
     return load_table("clinical_trials", s3_path)
 
 
+def load_edgar(s3_path: str | None = None) -> int:
+    return load_table("edgar", s3_path)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    for tbl in ("orange_book", "yfinance", "clinical_trials"):
+    for tbl in ("orange_book", "yfinance", "clinical_trials", "edgar"):
         n = load_table(tbl)
         print(f"{tbl}: {n} rows loaded")

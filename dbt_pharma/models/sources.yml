@@ -9,10 +9,15 @@ sources:
       These are the unmodified source-of-truth tables — never queried by Streamlit directly.
     tables:
       - name: orange_book
-        description: FDA Orange Book NCE exclusivity records (filtered to NCE/NCE-1 codes)
+        description: >
+          FDA Orange Book NCE exclusivity records. exclusivity.txt joined with
+          products.txt on Appl_No+Product_No at extract time — provides trade_name,
+          ingredient, and applicant_full_name alongside exclusivity codes.
         columns:
-          - name: drug_name
+          - name: trade_name
             tests: [not_null]
+          - name: ingredient
+          - name: applicant_full_name
           - name: exclusivity_code
             tests:
               - not_null
@@ -45,3 +50,32 @@ sources:
             tests:
               - accepted_values:
                   values: ['PHASE3']
+
+      - name: edgar
+        description: >
+          SEC EDGAR annual revenue + R&D expense data via XBRL API.
+          us-gaap filers (MRK/BMY/LLY/PFE/JNJ/ABBV) file 10-K.
+          IFRS filers (AZN/NVS) file 20-F using ifrs-full namespace.
+          value_usd always in USD; concept varies by company — see config.py.
+        columns:
+          - name: ticker
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['MRK', 'BMY', 'AZN', 'LLY', 'PFE', 'JNJ', 'ABBV', 'NVS']
+          - name: concept
+            tests: [not_null]
+          - name: metric
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['revenue', 'rd_expense']
+          - name: form
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['10-K', '20-F']
+          - name: end_date
+            tests: [not_null]
+          - name: value_usd
+            tests: [not_null]

@@ -5,7 +5,7 @@ Reads from Snowflake MART schema via st.secrets["snowflake"].
 Pages:
   1. Revenue Cliff       — market cap decline by drug/company
   2. Drawdown Analysis   — price peak-to-trough + recovery timeline
-  3. Pipeline Readiness  — Phase III coverage score for all 7 companies
+  3. Pipeline Readiness  — Phase III coverage score for all 8 companies
 
 Deployment: Streamlit Community Cloud
   - Connects to GitHub repo automatically
@@ -63,6 +63,24 @@ def load_pipeline_readiness() -> pd.DataFrame:
     return query_snowflake("SELECT * FROM MART.MART_PIPELINE_READINESS ORDER BY READINESS_SCORE DESC")
 
 
+@st.cache_data(ttl=3600)
+def load_data_freshness() -> dict:
+    """Query MAX(_loaded_at) from each RAW table for sidebar freshness badge."""
+    sql = """
+        SELECT
+            'orange_book'     AS source, MAX(_loaded_at) AS last_loaded FROM PHARMA_CLIFF.RAW.ORANGE_BOOK
+        UNION ALL SELECT 'yfinance',        MAX(_loaded_at) FROM PHARMA_CLIFF.RAW.YFINANCE
+        UNION ALL SELECT 'clinical_trials', MAX(_loaded_at) FROM PHARMA_CLIFF.RAW.CLINICAL_TRIALS
+        UNION ALL SELECT 'edgar',           MAX(_loaded_at) FROM PHARMA_CLIFF.RAW.EDGAR
+    """
+    try:
+        df = query_snowflake(sql)
+        df.columns = [c.lower() for c in df.columns]
+        return dict(zip(df["source"], df["last_loaded"]))
+    except Exception:
+        return {}
+
+
 # ── Page 1: Revenue Cliff ──────────────────────────────────────────────────────
 
 def page_revenue_cliff():
@@ -92,15 +110,18 @@ def page_revenue_cliff():
     if pd.notna(avg_decline):
         col3.metric("Avg market cap decline", f"{avg_decline:.1f}%")
 
-    # Market cap timeline
+    # Market cap timeline — filter to rows with pct_decline for chart only; table keeps all
+    chart_df = company_df.dropna(subset=["pct_decline"])
+    if chart_df.empty:
+        st.info("Decline data not yet available — cliff dates are in the future.")
     st.subheader(f"{selected} — Drug Cliff Timeline")
     fig = px.scatter(
-        company_df,
+        chart_df,
         x="cliff_year",
         y="pct_decline",
         size="market_cap_pre",
         color="cliff_category",
-        hover_data=["drug_name", "active_ingredient", "nce_expiry_date"],
+        hover_data=["trade_name", "ingredient", "nce_expiry_date"],
         color_discrete_map={
             "past": "#6c757d",
             "imminent": "#dc3545",
@@ -119,14 +140,14 @@ def page_revenue_cliff():
     # Detail table
     st.subheader("Drug Detail")
     display_cols = [
-        "drug_name", "active_ingredient", "cliff_year",
+        "trade_name", "ingredient", "cliff_year",
         "cliff_category", "pct_decline", "market_cap_pre", "market_cap_post",
     ]
     display_cols = [c for c in display_cols if c in company_df.columns]
     st.dataframe(
         company_df[display_cols].rename(columns={
-            "drug_name": "Drug",
-            "active_ingredient": "Active Ingredient",
+            "trade_name": "Drug",
+            "ingredient": "Active Ingredient",
             "cliff_year": "Cliff Year",
             "cliff_category": "Timing",
             "pct_decline": "Mkt Cap Decline %",
@@ -157,23 +178,27 @@ def page_drawdown_analysis():
         st.info(f"No drawdown events for {selected}.")
         return
 
-    # Summary metrics
-    worst_idx = company_df["drawdown_pct"].idxmin()
-    worst = company_df.loc[worst_idx]
+    # Filter to events with measured drawdown (past cliffs only)
+    chart_df = company_df.dropna(subset=["drawdown_pct"])
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Worst drawdown", f"{worst['drawdown_pct']:.1f}%", delta_color="inverse")
-    col2.metric("Drug", worst["drug_name"])
-    col3.metric("Cliff date", str(worst["cliff_date"]))
-    col4.metric(
-        "Days to recovery",
-        f"{worst['recovery_days']:.0f}d" if pd.notna(worst["recovery_days"]) else "Not recovered",
-    )
+    if not chart_df.empty:
+        worst_idx = chart_df["drawdown_pct"].idxmin()
+        worst = chart_df.loc[worst_idx]
+        col1.metric("Worst drawdown", f"{worst['drawdown_pct']:.1f}%", delta_color="inverse")
+        col2.metric("Drug", worst["trade_name"])
+        col3.metric("Cliff date", str(worst["cliff_date"]))
+        col4.metric(
+            "Days to recovery",
+            f"{worst['recovery_days']:.0f}d" if pd.notna(worst["recovery_days"]) else "Not recovered",
+        )
+    else:
+        st.info(f"No post-cliff drawdown data for {selected} — all cliff dates are in the future.")
 
     # Drawdown depth chart
     st.subheader("Drawdown Depth by Drug")
     fig = go.Figure()
-    for _, row in company_df.iterrows():
+    for _, row in chart_df.iterrows():
         cliff_date = pd.to_datetime(row["cliff_date"])
         # Simplified 3-point timeline: peak → cliff → trough → recovery
         x_dates = [cliff_date, cliff_date, cliff_date + pd.Timedelta(days=int(row["drawdown_duration_days"] or 90))]
@@ -182,9 +207,9 @@ def page_drawdown_analysis():
             x=x_dates,
             y=y_pcts,
             mode="lines+markers",
-            name=row["drug_name"],
+            name=row["trade_name"],
             hovertemplate=(
-                f"<b>{row['drug_name']}</b><br>"
+                f"<b>{row['trade_name']}</b><br>"
                 f"Cliff: {row['cliff_date']}<br>"
                 f"Drawdown: {row['drawdown_pct']:.1f}%<br>"
                 f"Duration: {row['drawdown_duration_days']:.0f} days<extra></extra>"
@@ -203,14 +228,14 @@ def page_drawdown_analysis():
     # Detail table
     st.subheader("Drawdown Events")
     display_cols = [
-        "drug_name", "cliff_date", "drawdown_pct",
+        "trade_name", "cliff_date", "drawdown_pct",
         "drawdown_duration_days", "recovery_date", "recovery_days",
         "market_cap_at_risk",
     ]
     display_cols = [c for c in display_cols if c in company_df.columns]
     st.dataframe(
         company_df[display_cols].rename(columns={
-            "drug_name": "Drug",
+            "trade_name": "Drug",
             "cliff_date": "Cliff Date",
             "drawdown_pct": "Drawdown %",
             "drawdown_duration_days": "Days to Trough",
@@ -315,6 +340,26 @@ def main():
     )
 
     st.sidebar.markdown("---")
+
+    # Data freshness badge
+    freshness = load_data_freshness()
+    if freshness:
+        st.sidebar.markdown("**Data freshness**")
+        source_labels = {
+            "orange_book": "Orange Book",
+            "yfinance": "yFinance",
+            "clinical_trials": "Clinical Trials",
+            "edgar": "EDGAR",
+        }
+        for source, label in source_labels.items():
+            ts = freshness.get(source)
+            if ts:
+                ts_str = pd.Timestamp(ts).strftime("%Y-%m-%d %H:%M UTC") if pd.notna(ts) else "—"
+            else:
+                ts_str = "—"
+            st.sidebar.caption(f"{label}: {ts_str}")
+        st.sidebar.markdown("---")
+
     st.sidebar.markdown(
         "**Note:** App may take ~30s to load after inactivity "
         "(Streamlit Community Cloud cold start)."

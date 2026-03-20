@@ -8,7 +8,7 @@ models:
     columns:
       - name: ticker
         tests: [not_null]
-      - name: drug_name
+      - name: trade_name
         tests: [not_null]
       - name: cliff_year
         tests: [not_null]

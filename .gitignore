@@ -58,6 +58,7 @@ Thumbs.db
 
 # dbt
 dbt_pharma/profiles.yml
+!dbt_pharma/profiles.yml.example
 dbt_pharma/target/
 dbt_pharma/dbt_packages/
 

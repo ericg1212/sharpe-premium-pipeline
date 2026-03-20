@@ -7,7 +7,7 @@ with drawdown as (
 ),
 
 cliff as (
-    select ticker, drug_name, nce_expiry_date, company_name, cliff_year
+    select ticker, trade_name, nce_expiry_date, company_name, cliff_year
     from {{ ref('int_cliff_events') }}
 ),
 
@@ -15,7 +15,7 @@ final as (
     select
         d.ticker,
         c.company_name,
-        d.drug_name,
+        d.trade_name,
         d.nce_expiry_date   as cliff_date,
         c.cliff_year,
         d.peak_price,
@@ -31,7 +31,7 @@ final as (
     from drawdown d
     inner join cliff c
         on c.ticker = d.ticker
-        and c.drug_name = d.drug_name
+        and c.trade_name = d.trade_name
         and c.nce_expiry_date = d.nce_expiry_date
 )
 

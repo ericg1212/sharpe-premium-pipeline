@@ -8,11 +8,13 @@ Task flow:
     extract_orange_book
     extract_yfinance
     extract_clinical_trials
+    extract_edgar
   ↓
   load_snowflake (TaskGroup)
     copy_orange_book_to_snowflake
     copy_yfinance_to_snowflake
     copy_clinical_trials_to_snowflake
+    copy_edgar_to_snowflake
   ↓
   transform (TaskGroup)
     dbt_run
@@ -41,6 +43,7 @@ from pharma_patent_cliff import (
     orange_book_extractor,
     yfinance_extractor,
     clinical_trials_extractor,
+    edgar_extractor,
     snowflake_loader,
 )
 
@@ -96,6 +99,17 @@ def _copy_yfinance(**context):
 def _copy_clinical_trials(**context):
     rows = snowflake_loader.load_clinical_trials()
     logger.info("Clinical Trials loaded: %d rows", rows)
+
+
+def _extract_edgar(**context):
+    uri = edgar_extractor.run()
+    context["ti"].xcom_push(key="edgar_s3_uri", value=uri)
+    logger.info("EDGAR extracted to %s", uri)
+
+
+def _copy_edgar(**context):
+    rows = snowflake_loader.load_edgar()
+    logger.info("EDGAR loaded: %d rows", rows)
 
 
 def _ge_validate_sources(**context):
@@ -167,6 +181,11 @@ with DAG(
             python_callable=_extract_clinical_trials,
         )
 
+        extract_edgar = PythonOperator(
+            task_id="extract_edgar",
+            python_callable=_extract_edgar,
+        )
+
     # ── Load Snowflake ────────────────────────────────────────────────────────
     with TaskGroup("load_snowflake") as load_group:
 
@@ -183,6 +202,11 @@ with DAG(
         copy_clinical_trials_to_snowflake = PythonOperator(
             task_id="copy_clinical_trials_to_snowflake",
             python_callable=_copy_clinical_trials,
+        )
+
+        copy_edgar_to_snowflake = PythonOperator(
+            task_id="copy_edgar_to_snowflake",
+            python_callable=_copy_edgar,
         )
 
     # ── Transform (dbt) ───────────────────────────────────────────────────────

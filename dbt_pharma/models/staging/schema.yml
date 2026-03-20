@@ -2,9 +2,9 @@ version: 2
 
 models:
   - name: stg_orange_book
-    description: Cleaned Orange Book NCE records — type-cast, uppercased, NCE-only filter
+    description: Cleaned Orange Book NCE records — type-cast, uppercased, NCE-only filter. Joined with products.txt at extract time so trade_name and ingredient are available here.
     columns:
-      - name: drug_name
+      - name: trade_name
         tests: [not_null]
       - name: exclusivity_date
         tests: [not_null]

@@ -17,8 +17,8 @@ final as (
     select
         c.ticker,
         c.company_name,
-        c.drug_name,
-        c.active_ingredient,
+        c.trade_name,
+        c.ingredient,
         c.nce_expiry_date,
         c.cliff_year,
         c.cliff_category,
@@ -35,7 +35,7 @@ final as (
     from cliff c
     left join drawdown d
         on d.ticker = c.ticker
-        and d.drug_name = c.drug_name
+        and d.trade_name = c.trade_name
         and d.nce_expiry_date = c.nce_expiry_date
 )
 

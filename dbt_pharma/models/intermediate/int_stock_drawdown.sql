@@ -21,7 +21,7 @@ prices as (
 pre_cliff_peak as (
     select
         c.ticker,
-        c.drug_name,
+        c.trade_name,
         c.nce_expiry_date,
         max(p.close) as peak_price,
         max(p.market_cap) as market_cap_pre
@@ -37,7 +37,7 @@ pre_cliff_peak as (
 post_cliff_trough as (
     select
         c.ticker,
-        c.drug_name,
+        c.trade_name,
         c.nce_expiry_date,
         min(p.close) as trough_price,
         min(p.market_cap) as market_cap_post,
@@ -54,7 +54,7 @@ post_cliff_trough as (
 combined as (
     select
         pk.ticker,
-        pk.drug_name,
+        pk.trade_name,
         pk.nce_expiry_date,
         pk.peak_price,
         pk.market_cap_pre,
@@ -71,7 +71,7 @@ combined as (
     from pre_cliff_peak pk
     inner join post_cliff_trough tr
         on tr.ticker = pk.ticker
-        and tr.drug_name = pk.drug_name
+        and tr.trade_name = pk.trade_name
         and tr.nce_expiry_date = pk.nce_expiry_date
 ),
 
@@ -79,7 +79,7 @@ combined as (
 recovery as (
     select
         c2.ticker,
-        c2.drug_name,
+        c2.trade_name,
         c2.nce_expiry_date,
         min(p2.date) as recovery_date
     from combined c2
@@ -93,7 +93,7 @@ recovery as (
 final as (
     select
         c.ticker,
-        c.drug_name,
+        c.trade_name,
         c.nce_expiry_date,
         c.peak_price,
         c.trough_price,
@@ -106,7 +106,7 @@ final as (
     from combined c
     left join recovery r
         on r.ticker = c.ticker
-        and r.drug_name = c.drug_name
+        and r.trade_name = c.trade_name
         and r.nce_expiry_date = c.nce_expiry_date
 )
 

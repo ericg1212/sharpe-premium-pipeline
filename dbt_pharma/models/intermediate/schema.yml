@@ -8,8 +8,12 @@ models:
     columns:
       - name: ticker
         tests: [not_null]
-      - name: drug_name
+      - name: trade_name
         tests: [not_null]
+      - name: match_tier
+        tests:
+          - accepted_values:
+              values: ['trade_name', 'applicant_name', 'unmatched']
 
   - name: int_cliff_events
     description: >
@@ -18,7 +22,7 @@ models:
     columns:
       - name: ticker
         tests: [not_null]
-      - name: drug_name
+      - name: trade_name
         tests: [not_null]
       - name: nce_expiry_date
         tests: [not_null]

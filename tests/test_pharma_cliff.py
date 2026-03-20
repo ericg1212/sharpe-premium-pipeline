@@ -14,74 +14,110 @@ import pytest
 
 # ── Orange Book Extractor ──────────────────────────────────────────────────────
 
-class TestOrangeBookExtractor:
-    """Tests for orange_book_extractor.py"""
+def _make_orange_book_zip(excl_content: str, prod_content: str) -> bytes:
+    """Build an in-memory ZIP with exclusivity.txt and products.txt."""
+    import zipfile as zf
+    buf = io.BytesIO()
+    with zf.ZipFile(buf, "w") as z:
+        z.writestr("exclusivity.txt", excl_content)
+        z.writestr("products.txt", prod_content)
+    buf.seek(0)
+    return buf.read()
 
-    SAMPLE_TSV = (
-        "Appl_Type~Appl_No~Product_No~Exclusivity_Code~Exclusivity_Date~Drug_Name~Active_Ingredient\n"
-        "N~210736~001~NCE~Jan 01, 2028~KEYTRUDA~PEMBROLIZUMAB\n"
-        "N~210736~002~ODE~Jan 01, 2028~KEYTRUDA~PEMBROLIZUMAB\n"  # non-NCE, should be filtered
-        "N~210737~001~NCE-1~Mar 15, 2029~OPDIVO~NIVOLUMAB\n"
-        "N~210738~001~NCE~Jun 30, 2025~BADROW~\n"  # null active_ingredient OK — drug_name non-null
+
+class TestOrangeBookExtractor:
+    """Tests for orange_book_extractor.py
+
+    Orange Book ships as a ZIP containing two pipe-delimited files:
+      exclusivity.txt  — code + date (no drug name)
+      products.txt     — trade_name, ingredient, applicant_full_name
+    filter_nce(excl, prod) joins them on Appl_No+Product_No.
+    """
+
+    # exclusivity.txt: 5 cols — Appl_Type, Appl_No, Product_No, Exclusivity_Code, Exclusivity_Date
+    EXCL_CONTENT = (
+        "Appl_Type~Appl_No~Product_No~Exclusivity_Code~Exclusivity_Date\n"
+        "N~210736~001~NCE~Jan 01, 2028\n"
+        "N~210736~002~ODE~Jan 01, 2028\n"   # non-NCE — filtered out
+        "N~210737~001~NCE-1~Mar 15, 2029\n"
     )
+    # products.txt: has trade name, ingredient, applicant
+    PROD_CONTENT = (
+        "Appl_Type~Appl_No~Product_No~Trade_Name~Ingredient~Applicant_Full_Name\n"
+        "N~210736~001~KEYTRUDA~PEMBROLIZUMAB~MERCK SHARP\n"
+        "N~210736~002~KEYTRUDA~PEMBROLIZUMAB~MERCK SHARP\n"
+        "N~210737~001~OPDIVO~NIVOLUMAB~BRISTOL-MYERS\n"
+    )
+
+    def _make_dfs(self, excl=None, prod=None):
+        excl_csv = excl or self.EXCL_CONTENT
+        prod_csv = prod or self.PROD_CONTENT
+        excl_df = pd.read_csv(io.StringIO(excl_csv), sep="~", dtype=str)
+        prod_df = pd.read_csv(io.StringIO(prod_csv), sep="~", dtype=str)
+        return excl_df, prod_df
 
     def test_filter_nce_keeps_nce_codes(self):
         from pharma_patent_cliff.orange_book_extractor import filter_nce
-        df = pd.read_csv(io.StringIO(self.SAMPLE_TSV), sep="~", dtype=str)
-        result = filter_nce(df)
-        # ODE row should be dropped
+        excl, prod = self._make_dfs()
+        result = filter_nce(excl, prod)
         assert set(result["Exclusivity_Code"].unique()) <= {"NCE", "NCE-1"}
 
-    def test_filter_nce_drops_null_drug_name(self):
+    def test_filter_nce_drops_null_trade_name(self):
+        """Rows that fail the products join (no matching Appl_No/Product_No) yield null Trade_Name."""
         from pharma_patent_cliff.orange_book_extractor import filter_nce
-        tsv = (
-            "Appl_Type~Appl_No~Product_No~Exclusivity_Code~Exclusivity_Date~Drug_Name~Active_Ingredient\n"
-            "N~999~001~NCE~Jan 01, 2029~~SOMEINGREDIENT\n"  # null drug_name
-        )
-        df = pd.read_csv(io.StringIO(tsv), sep="~", dtype=str)
-        result = filter_nce(df)
+        excl = pd.read_csv(io.StringIO(
+            "Appl_Type~Appl_No~Product_No~Exclusivity_Code~Exclusivity_Date\n"
+            "N~999~001~NCE~Jan 01, 2029\n"  # no matching product row
+        ), sep="~", dtype=str)
+        prod = pd.read_csv(io.StringIO(
+            "Appl_Type~Appl_No~Product_No~Trade_Name~Ingredient~Applicant_Full_Name\n"
+        ), sep="~", dtype=str)
+        result = filter_nce(excl, prod)
         assert len(result) == 0
 
     def test_filter_nce_parses_date(self):
         from pharma_patent_cliff.orange_book_extractor import filter_nce
-        df = pd.read_csv(io.StringIO(self.SAMPLE_TSV), sep="~", dtype=str)
-        result = filter_nce(df)
+        excl, prod = self._make_dfs()
+        result = filter_nce(excl, prod)
         assert pd.api.types.is_datetime64_any_dtype(result["Exclusivity_Date"])
 
-    def test_filter_nce_uppercases_drug_name(self):
+    def test_filter_nce_uppercases_trade_name(self):
         from pharma_patent_cliff.orange_book_extractor import filter_nce
-        tsv = (
-            "Appl_Type~Appl_No~Product_No~Exclusivity_Code~Exclusivity_Date~Drug_Name~Active_Ingredient\n"
-            "N~210736~001~NCE~Jan 01, 2028~keytruda~pembrolizumab\n"
-        )
-        df = pd.read_csv(io.StringIO(tsv), sep="~", dtype=str)
-        result = filter_nce(df)
-        assert result.iloc[0]["Drug_Name"] == "KEYTRUDA"
+        excl = pd.read_csv(io.StringIO(
+            "Appl_Type~Appl_No~Product_No~Exclusivity_Code~Exclusivity_Date\n"
+            "N~210736~001~NCE~Jan 01, 2028\n"
+        ), sep="~", dtype=str)
+        prod = pd.read_csv(io.StringIO(
+            "Appl_Type~Appl_No~Product_No~Trade_Name~Ingredient~Applicant_Full_Name\n"
+            "N~210736~001~keytruda~pembrolizumab~merck sharp\n"
+        ), sep="~", dtype=str)
+        result = filter_nce(excl, prod)
+        assert result.iloc[0]["Trade_Name"] == "KEYTRUDA"
 
-    @patch("pharma_patent_cliff.orange_book_extractor.boto3.client")
-    def test_write_to_s3_calls_put_object(self, mock_boto):
-        from pharma_patent_cliff.orange_book_extractor import write_to_s3
+    @patch("pharma_patent_cliff.s3_utils.boto3.client")
+    def test_write_parquet_calls_put_object(self, mock_boto):
+        from pharma_patent_cliff.s3_utils import write_parquet
         mock_s3 = MagicMock()
         mock_boto.return_value = mock_s3
 
         df = pd.DataFrame({
-            "Drug_Name": ["KEYTRUDA"],
+            "Trade_Name": ["KEYTRUDA"],
             "Exclusivity_Date": [datetime(2028, 1, 1)],
         })
-        uri = write_to_s3(df, "test-bucket", "raw/orange_book")
+        uri = write_parquet(df, "raw/orange_book/year=2025/month=03/data.parquet", bucket="test-bucket")
 
         assert mock_s3.put_object.called
-        assert uri.startswith("s3://test-bucket/raw/orange_book/")
+        assert uri.startswith("s3://test-bucket/")
 
     @patch("pharma_patent_cliff.orange_book_extractor.requests.get")
     def test_download_raises_on_http_error(self, mock_get):
-        from pharma_patent_cliff.orange_book_extractor import download_orange_book
+        from pharma_patent_cliff.orange_book_extractor import download_orange_book_zip
         mock_resp = MagicMock()
         mock_resp.raise_for_status.side_effect = Exception("404 Not Found")
         mock_get.return_value = mock_resp
 
         with pytest.raises(Exception, match="404"):
-            download_orange_book()
+            download_orange_book_zip()
 
 
 # ── yFinance Extractor ─────────────────────────────────────────────────────────
@@ -105,7 +141,7 @@ class TestYFinanceExtractor:
         from pharma_patent_cliff.yfinance_extractor import pull_ticker
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = self._make_sample_history()
-        mock_ticker.fast_info.shares_outstanding = 2_000_000_000
+        mock_ticker.fast_info.shares = 2_000_000_000  # fast_info.shares, not shares_outstanding
         mock_ticker_cls.return_value = mock_ticker
 
         df = pull_ticker("MRK", "2024-01-01", "2024-12-31")
@@ -125,13 +161,14 @@ class TestYFinanceExtractor:
         df = pull_ticker("FAKE", "2024-01-01", "2024-12-31")
         assert df.empty
 
-    @patch("pharma_patent_cliff.yfinance_extractor.boto3.client")
+    @patch("pharma_patent_cliff.s3_utils.boto3.client")  # write_parquet lives in s3_utils
     @patch("pharma_patent_cliff.yfinance_extractor.yf.Ticker")
     def test_run_writes_all_tickers(self, mock_ticker_cls, mock_boto):
-        from pharma_patent_cliff.yfinance_extractor import run, TICKERS
+        from pharma_patent_cliff.yfinance_extractor import run
+        from pharma_patent_cliff.config import TICKERS
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = self._make_sample_history()
-        mock_ticker.fast_info.shares_outstanding = 1_000_000_000
+        mock_ticker.fast_info.shares = 1_000_000_000  # fast_info.shares, not shares_outstanding
         mock_ticker_cls.return_value = mock_ticker
 
         mock_s3 = MagicMock()
