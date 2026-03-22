@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 import requests
 import logging
 import os
-from config import WEATHER_CITY
-from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+from config import WEATHER_CITY, FORECAST_SCHEMA
+from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition, partition_exists
 from data_quality import validate_weather_data, log_data_stats
 
 logger = logging.getLogger(__name__)
@@ -106,9 +106,14 @@ def load_to_s3():
     transformed_key = f"tmp/forecast/transformed/{date_str}.json"
     data = s3_read_json(s3, bucket, transformed_key)
 
+    prefix = f"forecast/date={date_str}/"
+    if partition_exists(s3, bucket, prefix):
+        logger.warning(f"Partition {prefix} already exists — skipping to avoid duplicate")
+        return f"s3://{bucket}/{prefix}"
+
     timestamp_str = get_date_str('timestamp')
     key = f"forecast/date={date_str}/{timestamp_str}.parquet"
-    s3_write_parquet(s3, bucket, key, data)
+    s3_write_parquet(s3, bucket, key, data, schema=FORECAST_SCHEMA)
 
     response = s3.head_object(Bucket=bucket, Key=key)
     logger.info(f"Uploaded to s3://{bucket}/{key} ({response['ContentLength']} bytes)")

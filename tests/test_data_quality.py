@@ -1,8 +1,15 @@
 """Tests for data quality validation functions in monitoring/data_quality.py."""
 
 import pytest
+import pandas as pd
 
-from monitoring.data_quality import validate_weather_data, validate_stock_data, DataQualityError
+from monitoring.data_quality import (
+    validate_weather_data,
+    validate_stock_data,
+    validate_fred_data,
+    validate_edgar_data,
+    DataQualityError,
+)
 
 
 class TestValidateWeatherData:
@@ -121,3 +128,73 @@ class TestValidateStockData:
         ]
         with pytest.raises(DataQualityError, match="BAD: Invalid price"):
             validate_stock_data(stocks)
+
+
+def _fred_df(series_id='GS10', value=4.5, date='2024-01-01', include_cols=True):
+    data = {'date': [date], 'value': [value], 'series_id': [series_id]}
+    df = pd.DataFrame(data)
+    return df
+
+
+class TestValidateFredData:
+
+    def test_valid_gs10_passes(self):
+        df = _fred_df('GS10', 4.5)
+        result = validate_fred_data(df, 'GS10')
+        assert result['valid'] is True
+
+    def test_invalid_gs10_out_of_range(self):
+        df = _fred_df('GS10', 20.0)
+        result = validate_fred_data(df, 'GS10')
+        assert result['valid'] is False
+        assert any('GS10' in e for e in result['errors'])
+
+    def test_missing_columns_returns_invalid(self):
+        df = pd.DataFrame({'date': ['2024-01-01'], 'series_id': ['GS10']})
+        result = validate_fred_data(df, 'GS10')
+        assert result['valid'] is False
+
+    def test_null_date_returns_invalid(self):
+        df = pd.DataFrame({'date': [None], 'value': [4.5], 'series_id': ['GS10']})
+        result = validate_fred_data(df, 'GS10')
+        assert result['valid'] is False
+
+    def test_valid_fedfunds_passes(self):
+        df = _fred_df('FEDFUNDS', 5.33)
+        result = validate_fred_data(df, 'FEDFUNDS')
+        assert result['valid'] is True
+
+
+def _edgar_df(symbol='META', year=2024, capex=50e9, revenue=200e9, include_revenue=True):
+    data = {'symbol': [symbol], 'year': [year], 'capex': [capex]}
+    if include_revenue:
+        data['revenue'] = [revenue]
+    return pd.DataFrame(data)
+
+
+class TestValidateEdgarData:
+
+    def test_valid_edgar_data_passes(self):
+        df = _edgar_df()
+        result = validate_edgar_data(df)
+        assert result['valid'] is True
+
+    def test_negative_capex_returns_invalid(self):
+        df = _edgar_df(capex=-1.0)
+        result = validate_edgar_data(df)
+        assert result['valid'] is False
+
+    def test_zero_revenue_returns_invalid(self):
+        df = _edgar_df(revenue=0)
+        result = validate_edgar_data(df)
+        assert result['valid'] is False
+
+    def test_capex_exceeds_revenue_returns_invalid(self):
+        df = _edgar_df(capex=300e9, revenue=200e9)
+        result = validate_edgar_data(df)
+        assert result['valid'] is False
+
+    def test_missing_columns_returns_invalid(self):
+        df = pd.DataFrame({'symbol': ['META'], 'year': [2024], 'capex': [50e9]})
+        result = validate_edgar_data(df)
+        assert result['valid'] is False

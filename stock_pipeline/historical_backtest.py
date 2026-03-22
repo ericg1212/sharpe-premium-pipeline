@@ -20,14 +20,17 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import io
 import json
 import logging
 import requests
 import pandas as pd
 import numpy as np
+import pyarrow.parquet as pq
 from datetime import datetime
 from time import sleep
 from config import STOCKS, AI_CAPEX, RISK_FREE_RATE, RATE_LIMIT_DELAY
+from utils import _s3_client
 from stock_pipeline.finance_utils import (
     calculate_annualized_return,
     calculate_max_drawdown,
@@ -36,6 +39,30 @@ from stock_pipeline.finance_utils import (
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+def get_dynamic_risk_free_rate(s3, bucket):
+    """Load FEDFUNDS from S3 and return mean as decimal. Falls back to config RISK_FREE_RATE."""
+    values = []
+    for year in range(2022, datetime.now().year + 1):
+        key = f"macro_indicators/series=FEDFUNDS/year={year}/data.parquet"
+        try:
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            table = pq.read_table(io.BytesIO(obj['Body'].read()))
+            for row in table.to_pylist():
+                v = row.get('value')
+                if v is not None:
+                    values.append(float(v))
+        except Exception:
+            pass
+
+    if values:
+        rate = float(np.mean(values)) / 100
+        logger.info(f"Dynamic risk-free rate from FEDFUNDS: {rate:.4f} ({rate*100:.2f}%)")
+        return rate
+
+    logger.warning("FEDFUNDS data not found in S3 — using config RISK_FREE_RATE fallback")
+    return RISK_FREE_RATE
 
 
 def fetch_monthly_prices(symbol):
@@ -69,7 +96,7 @@ def fetch_monthly_prices(symbol):
     return df
 
 
-def calculate_sharpe(prices_df, symbol):
+def calculate_sharpe(prices_df, symbol, rf_rate=RISK_FREE_RATE):
     """Calculate annualized return, volatility, and Sharpe ratio from monthly prices."""
     prices_df = prices_df.sort_values('date').reset_index(drop=True)
 
@@ -82,11 +109,11 @@ def calculate_sharpe(prices_df, symbol):
 
     annualized_return = calculate_annualized_return(monthly_returns.tolist())
     annualized_vol = monthly_returns.std() * np.sqrt(12)
-    sharpe = (annualized_return - RISK_FREE_RATE) / annualized_vol if annualized_vol > 0 else 0
+    sharpe = (annualized_return - rf_rate) / annualized_vol if annualized_vol > 0 else 0
 
     max_dd = calculate_max_drawdown(prices_df['close'].tolist())
 
-    rolling_results = calculate_rolling_sharpe(monthly_returns.tolist(), RISK_FREE_RATE, window=12)
+    rolling_results = calculate_rolling_sharpe(monthly_returns.tolist(), rf_rate, window=12)
     return_dates = prices_df['date'].iloc[1:].reset_index(drop=True)
     rolling_series = []
     for end_idx, sharpe_val in rolling_results:
@@ -129,13 +156,16 @@ def run_backtest():
     logger.info("Thesis: The market rewards AI builders, not AI renters")
     logger.info("=" * 70)
 
+    s3, bucket = _s3_client()
+    rf_rate = get_dynamic_risk_free_rate(s3, bucket)
+
     results = []
 
     for i, (symbol, info) in enumerate(STOCKS.items()):
         try:
             logger.info(f"[{i+1}/10] Fetching {symbol} ({info['category']})...")
             prices = fetch_monthly_prices(symbol)
-            metrics = calculate_sharpe(prices, symbol)
+            metrics = calculate_sharpe(prices, symbol, rf_rate=rf_rate)
 
             if metrics:
                 results.append(metrics)

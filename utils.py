@@ -72,9 +72,19 @@ def s3_write_ndjson(s3, bucket, key, records):
     )
 
 
-def s3_write_parquet(s3, bucket, key, records):
-    """Write a list of dicts to S3 as Snappy-compressed Parquet."""
-    table = pa.Table.from_pylist(records)
+def partition_exists(s3, bucket, prefix):
+    """Return True if any objects exist under the given S3 prefix."""
+    resp = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=1)
+    return resp.get('KeyCount', 0) > 0
+
+
+def s3_write_parquet(s3, bucket, key, records, schema=None):
+    """Write a list of dicts to S3 as Snappy-compressed Parquet.
+
+    schema: optional pyarrow.Schema — when provided enforces explicit column types
+            and catches schema drift at write time. Defaults to None (inferred).
+    """
+    table = pa.Table.from_pylist(records, schema=schema)
     buf = io.BytesIO()
     pq.write_table(table, buf, compression='snappy')
     buf.seek(0)

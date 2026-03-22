@@ -68,7 +68,10 @@ x-airflow-common:
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- pandas numpy boto3}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- pandas numpy boto3 pyarrow requests scipy}
+    # PYTHONPATH: repo root mounted at /opt/airflow/repo so DAGs can import config, utils,
+    # monitoring, stock_pipeline etc. without requiring `make dags` to copy source files.
+    PYTHONPATH: /opt/airflow/repo
     # AWS credentials (loaded from .env or set here)
     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
@@ -83,6 +86,10 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    # Mount repo root so all source modules are importable via PYTHONPATH=/opt/airflow/repo.
+    # This means `make dags` is no longer required for imports to resolve; dags/ mount above
+    # is kept for backward compatibility and so the Airflow scheduler scans it for DAG files.
+    - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow/repo:ro
     - ${AIRFLOW_PROJ_DIR:-.}/stock_pipeline:/opt/airflow/stock_pipeline
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:

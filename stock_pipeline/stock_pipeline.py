@@ -5,10 +5,11 @@ import requests
 import logging
 import os
 from time import sleep
-from config import STOCK_SYMBOLS, RATE_LIMIT_DELAY
+from config import STOCK_SYMBOLS, RATE_LIMIT_DELAY, STOCK_SCHEMA
 from utils import (
     _s3_client, _athena_client, get_date_str,
-    s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+    s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition,
+    partition_exists,
 )
 from data_quality import validate_stock_data, log_data_stats
 
@@ -49,7 +50,8 @@ def extract_stock_data():
     api_key = os.environ['ALPHA_VANTAGE_API_KEY']
     symbols = STOCK_SYMBOLS
 
-    all_data = []
+    results = {}
+    failures = []
 
     for symbol in symbols:
         try:
@@ -63,6 +65,7 @@ def extract_stock_data():
             # Validate response
             if 'Global Quote' not in data or not data['Global Quote']:
                 logger.warning(f"No data returned for {symbol}")
+                failures.append(symbol)
                 continue
 
             quote = data['Global Quote']
@@ -78,22 +81,24 @@ def extract_stock_data():
                 'change_percent': quote.get('10. change percent', '0%'),
             }
 
-            all_data.append(stock_data)
+            results[symbol] = stock_data
             logger.info(f"Successfully extracted {symbol}: ${stock_data['price']}")
 
             # API rate limit: 5 calls per minute for free tier
             sleep(RATE_LIMIT_DELAY)
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to fetch {symbol}: {str(e)}")
-            continue
-
         except Exception as e:
-            logger.error(f"Unexpected error for {symbol}: {str(e)}")
+            logger.error(f"Failed to fetch {symbol}: {str(e)}")
+            failures.append(symbol)
             continue
 
-    if not all_data:
-        raise Exception("No stock data extracted for any symbol")
+    if failures:
+        logger.warning(f"Failed symbols: {failures}")
+
+    if not results:
+        raise Exception("All stock extractions failed")
+
+    all_data = list(results.values())
 
     # Write raw data to S3 temp location (shared across workers)
     s3, bucket = _s3_client()
@@ -172,10 +177,15 @@ def load_to_s3():
         transformed_key = f"tmp/stocks/transformed/{date_str}.json"
         data = s3_read_json(s3, bucket, transformed_key)
 
+        prefix = f"stocks/date={date_str}/"
+        if partition_exists(s3, bucket, prefix):
+            logger.warning(f"Partition {prefix} already exists — skipping to avoid duplicate")
+            return f"s3://{bucket}/{prefix}"
+
         # Upload final data to S3 as NDJSON
         timestamp_str = get_date_str('timestamp')
         key = f"stocks/date={date_str}/{timestamp_str}.parquet"
-        s3_write_parquet(s3, bucket, key, data)
+        s3_write_parquet(s3, bucket, key, data, schema=STOCK_SCHEMA)
         logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
 
         # Verify upload
