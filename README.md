@@ -9,10 +9,10 @@
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 &nbsp;
 ![Pipelines](https://img.shields.io/badge/Pipelines-4-brightgreen?style=flat-square)
-![Tests](https://img.shields.io/badge/Tests-188-brightgreen?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-213-brightgreen?style=flat-square)
 ![Stocks](https://img.shields.io/badge/Stocks%20Analyzed-10-blue?style=flat-square)
 
-A data engineering portfolio proving a **+111.5% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 188 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
+A data engineering portfolio proving a **+111.5% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 213 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
 
 ## Key Finding: The Market Rewards AI Builders, Not AI Renters
 
@@ -119,14 +119,14 @@ terraform plan       # Preview resources (no changes applied)
 | CI/CD | GitHub Actions (lint, pytest, CodeQL, Scorecard, SBOM, dependency review) |
 | Language | Python 3.12 |
 | Key Libraries | boto3, pandas, numpy, pyarrow, requests |
-| Testing | pytest + moto (188 tests, AWS mocked at HTTP layer) |
+| Testing | pytest + moto (213 tests, AWS mocked at HTTP layer) |
 
 ## Testing
 
-188 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
+213 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
 
 ```bash
-pytest tests/ -v        # Run all 188 tests
+pytest tests/ -v        # Run all 213 tests
 pytest tests/test_edgar_pipeline.py -v   # Single pipeline
 make lint               # flake8 across all source dirs
 ```
