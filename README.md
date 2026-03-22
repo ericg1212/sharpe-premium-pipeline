@@ -79,9 +79,8 @@ In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more does
 - **Schedule:** 5:30 PM Mon-Fri (30 min after stock pipeline)
 - Replaces the manual `make analyze` command
 
-### Additional Pipelines
-- **Forecast** (`forecast_pipeline/forecast_pipeline.py`): 5-day forecast via OpenWeatherMap (daily 6 AM)
-- **Monitor** (`monitoring/pipeline_monitor.py`): Health checks across all pipelines
+### Monitor (`monitoring/pipeline_monitor.py`)
+Schedule-aware health checks across all pipelines — staleness thresholds vary by source cadence (daily/monthly/quarterly), with succeeded/failed symbol lists for targeted backfill.
 
 ## Historical Backtest (`stock_pipeline/historical_backtest.py`)
 
@@ -232,7 +231,7 @@ data-engineering-portfolio/
 - Docker Desktop
 - Python 3.12+
 - AWS account (S3, Athena, Glue)
-- API keys: Alpha Vantage, FRED (free at fred.stlouisfed.org/docs/api/api_key.html), OpenWeatherMap (for forecast pipeline)
+- API keys: Alpha Vantage, FRED (free at fred.stlouisfed.org/docs/api/api_key.html)
 
 ### Quick Start
 ```bash
@@ -274,7 +273,6 @@ make clean    # Remove __pycache__, logs, stopped containers
 | [Alpha Vantage](https://www.alphavantage.co/) | Stock quotes + monthly history | Daily prices | 25 calls/day (free) |
 | [SEC EDGAR](https://www.sec.gov/developer) | Company Facts API | Annual 10-K filings | No limit (free) |
 | [FRED](https://fred.stlouisfed.org/docs/api/fred/) | Observations API | Macro indicators | No limit (free, key required) |
-| [OpenWeatherMap](https://openweathermap.org/api) | Current + forecast | Weather | 1,000 calls/day (free) |
 
 ---
 
