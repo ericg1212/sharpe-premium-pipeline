@@ -9,10 +9,10 @@
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 &nbsp;
 ![Pipelines](https://img.shields.io/badge/Pipelines-4-brightgreen?style=flat-square)
-![Tests](https://img.shields.io/badge/Tests-147-brightgreen?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-165-brightgreen?style=flat-square)
 ![Stocks](https://img.shields.io/badge/Stocks%20Analyzed-10-blue?style=flat-square)
 
-A data engineering portfolio proving a **+111.5% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 147 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
+A data engineering portfolio proving a **+111.5% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 165 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
 
 ## Key Finding: The Market Rewards AI Builders, Not AI Renters
 
@@ -30,7 +30,7 @@ Analysis of risk-adjusted returns (Jan 2023 – present) across 10 major tech st
 
 Spearman rank correlation between AI% of capex and Sharpe ratio: **ρ = +0.800** — the premium holds stock by stock, not just in aggregate.
 
-The FRED macro pipeline adds the next research question: **does the AI Sharpe premium hold across different macro regimes** (rising rates, high inflation, elevated unemployment)?
+The FRED macro pipeline enables macro regime analysis: each month is classified into a combined regime using GS10, CPI, UNRATE, and FEDFUNDS data, and the trailing 12-month Sharpe premium for AI Builders vs. Integrators is computed per regime. Rate regime is determined by comparing the current GS10 yield to its 12-month rolling mean (rising vs. falling); inflation regime by CPI year-over-year change exceeding 4%; unemployment regime by UNRATE exceeding 5.5%. Run `make regime` to produce `stock_pipeline/regime_analysis.csv` (per-month detail) and `stock_pipeline/regime_summary.csv` (aggregated premium by regime combination) — results are not yet final since the analysis requires live S3 data from the FRED pipeline.
 
 ![Dashboard](dashboard.png)
 
@@ -123,10 +123,10 @@ terraform plan       # Preview resources (no changes applied)
 
 ## Testing
 
-147 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
+165 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
 
 ```bash
-pytest tests/ -v        # Run all 147 tests
+pytest tests/ -v        # Run all 165 tests
 pytest tests/test_edgar_pipeline.py -v   # Single pipeline
 make lint               # flake8 across all source dirs
 ```
@@ -181,6 +181,7 @@ data-engineering-portfolio/
 │   ├── historical_backfill.py         # One-time S3 backfill script (Parquet output)
 │   ├── portfolio_analysis.py          # Build vs Rent + capex efficiency CSVs
 │   ├── finance_utils.py               # Pure finance functions: Sharpe, drawdown, beta
+│   ├── macro_regime_analysis.py       # Regime classification + builder premium by macro regime
 │   └── *.csv / *.json                 # Power BI data files
 ├── edgar_pipeline/
 │   └── edgar_pipeline.py             # Airflow DAG: SEC 10-K capex + revenue
@@ -262,7 +263,7 @@ make setup    # Copy DAGs + create .env from template
 make up       # Start Airflow stack
 make down     # Stop Airflow stack
 make dags     # Copy all pipeline files into ./dags
-make test     # Run pytest (147 tests)
+make test     # Run pytest (165 tests)
 make lint     # flake8 across all source dirs
 make analyze  # Run backtest + portfolio analysis, refresh all CSVs
 make logs     # Tail scheduler + worker logs

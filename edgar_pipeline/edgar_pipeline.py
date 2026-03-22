@@ -22,8 +22,8 @@ from time import sleep
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 import pandas as pd
-from config import EDGAR_CIKS, GLUE_DATABASE, ATHENA_WORKGROUP
-from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet
+from config import EDGAR_CIKS, GLUE_DATABASE, ATHENA_WORKGROUP, EDGAR_SCHEMA
+from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, partition_exists
 from monitoring.data_quality import validate_edgar_data
 
 logger = logging.getLogger(__name__)
@@ -210,8 +210,12 @@ def load_to_s3():
     athena = _athena_client()
 
     for (cik, year), partition_records in partitions.items():
+        prefix = f"fundamentals/cik={cik}/year={year}/"
+        if partition_exists(s3, bucket, prefix):
+            logger.warning(f"Partition {prefix} already exists — skipping to avoid duplicate")
+            continue
         key = f"fundamentals/cik={cik}/year={year}/data.parquet"
-        s3_write_parquet(s3, bucket, key, partition_records)
+        s3_write_parquet(s3, bucket, key, partition_records, schema=EDGAR_SCHEMA)
         logger.info(f"Written {len(partition_records)} records to s3://{bucket}/{key}")
 
         # Multi-key partition — register directly (two partition columns)

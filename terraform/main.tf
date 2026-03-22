@@ -45,6 +45,62 @@ resource "aws_s3_bucket_public_access_block" "data_lake" {
   restrict_public_buckets = true
 }
 
+# Lifecycle rules reduce storage cost and prevent unbounded tmp/ accumulation
+resource "aws_s3_bucket_lifecycle_configuration" "data_lake" {
+  bucket = aws_s3_bucket.data_lake.id
+
+  # Rule 1a-1d: archive raw data prefixes to STANDARD_IA at 90 days, GLACIER at 365 days.
+  # Split into one rule per prefix — S3 lifecycle filters do not support OR across prefixes
+  # without tags, so separate rules are the standard pattern.
+  rule {
+    id     = "archive-stocks"
+    status = "Enabled"
+    filter { prefix = "stocks/" }
+    transition { days = 90;  storage_class = "STANDARD_IA" }
+    transition { days = 365; storage_class = "GLACIER" }
+  }
+
+  rule {
+    id     = "archive-macro-indicators"
+    status = "Enabled"
+    filter { prefix = "macro_indicators/" }
+    transition { days = 90;  storage_class = "STANDARD_IA" }
+    transition { days = 365; storage_class = "GLACIER" }
+  }
+
+  rule {
+    id     = "archive-fundamentals"
+    status = "Enabled"
+    filter { prefix = "fundamentals/" }
+    transition { days = 90;  storage_class = "STANDARD_IA" }
+    transition { days = 365; storage_class = "GLACIER" }
+  }
+
+  rule {
+    id     = "archive-historical-prices"
+    status = "Enabled"
+    filter { prefix = "historical_prices/" }
+    transition { days = 90;  storage_class = "STANDARD_IA" }
+    transition { days = 365; storage_class = "GLACIER" }
+  }
+
+  # Rule 2: expire tmp/ after 7 days — intermediate pipeline data must not accumulate
+  rule {
+    id     = "expire-tmp-data"
+    status = "Enabled"
+    filter { prefix = "tmp/" }
+    expiration { days = 7 }
+  }
+
+  # Rule 3: transition analysis cache to STANDARD_IA after 180 days
+  rule {
+    id     = "expire-analysis-cache"
+    status = "Enabled"
+    filter { prefix = "analysis/" }
+    transition { days = 180; storage_class = "STANDARD_IA" }
+  }
+}
+
 # Glue Catalog
 
 resource "aws_glue_catalog_database" "main" {

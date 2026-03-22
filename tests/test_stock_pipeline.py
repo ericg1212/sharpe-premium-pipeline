@@ -233,7 +233,7 @@ class TestExtractStockData:
 
         with patch('stock_pipeline.stock_pipeline.requests.get', return_value=mock_response), \
              patch('stock_pipeline.stock_pipeline.sleep'):
-            with pytest.raises(Exception, match="No stock data extracted"):
+            with pytest.raises(Exception, match="All stock extractions failed"):
                 extract_stock_data()
 
     def test_extract_handles_request_exception(self, s3_client, monkeypatch):
@@ -243,5 +243,5 @@ class TestExtractStockData:
             'stock_pipeline.stock_pipeline.requests.get',
             side_effect=requests.exceptions.RequestException("connection refused"),
         ), patch('stock_pipeline.stock_pipeline.sleep'):
-            with pytest.raises(Exception, match="No stock data extracted"):
+            with pytest.raises(Exception, match="All stock extractions failed"):
                 extract_stock_data()

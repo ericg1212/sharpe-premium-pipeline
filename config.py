@@ -9,6 +9,53 @@ Standalone scripts (historical_backtest.py, portfolio_analysis.py) add
 the project root to sys.path before importing.
 """
 
+import pyarrow as pa
+
+STOCK_SCHEMA = pa.schema([
+    pa.field('symbol', pa.string()),
+    pa.field('price', pa.float64()),
+    pa.field('previous_close', pa.float64()),
+    pa.field('change', pa.float64()),
+    pa.field('change_percent', pa.float64()),
+    pa.field('volume', pa.int64()),
+    pa.field('trading_day', pa.string()),
+    pa.field('timestamp', pa.string()),
+])
+
+FRED_SCHEMA = pa.schema([
+    pa.field('series_id', pa.string()),
+    pa.field('description', pa.string()),
+    pa.field('units', pa.string()),
+    pa.field('date', pa.string()),
+    pa.field('year', pa.int64()),
+    pa.field('month', pa.int64()),
+    pa.field('value', pa.float64()),
+    pa.field('extracted_at', pa.string()),
+])
+
+EDGAR_SCHEMA = pa.schema([
+    pa.field('cik', pa.string()),
+    pa.field('symbol', pa.string()),
+    pa.field('year', pa.int64()),
+    pa.field('capex_usd', pa.int64()),
+    pa.field('revenue_usd', pa.int64()),
+    pa.field('revenue_tag', pa.string()),
+    pa.field('period_end', pa.string()),
+    pa.field('filed', pa.string()),
+    pa.field('extracted_at', pa.string()),
+])
+
+FORECAST_SCHEMA = pa.schema([
+    pa.field('city', pa.string()),
+    pa.field('forecast_time', pa.string()),
+    pa.field('temperature', pa.float64()),
+    pa.field('feels_like', pa.float64()),
+    pa.field('humidity', pa.int64()),
+    pa.field('description', pa.string()),
+    pa.field('wind_speed', pa.float64()),
+    pa.field('timestamp', pa.string()),
+])
+
 # --- Stock pipeline ---
 
 STOCK_SYMBOLS = ['NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'CRM', 'ORCL', 'ADBE', 'AAPL', 'TSLA']

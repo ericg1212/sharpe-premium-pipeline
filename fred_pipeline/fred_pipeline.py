@@ -26,8 +26,8 @@ from collections import defaultdict
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 import pandas as pd
-from config import GLUE_DATABASE, ATHENA_WORKGROUP, FRED_SERIES
-from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet
+from config import GLUE_DATABASE, ATHENA_WORKGROUP, FRED_SERIES, FRED_SCHEMA
+from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, partition_exists
 from monitoring.data_quality import validate_fred_data
 
 logger = logging.getLogger(__name__)
@@ -170,8 +170,12 @@ def load_to_s3():
     athena = _athena_client()
 
     for (series_id, year), partition_records in partitions.items():
+        prefix = f"macro_indicators/series={series_id}/year={year}/"
+        if partition_exists(s3, bucket, prefix):
+            logger.warning(f"Partition {prefix} already exists — skipping to avoid duplicate")
+            continue
         key = f"macro_indicators/series={series_id}/year={year}/data.parquet"
-        s3_write_parquet(s3, bucket, key, partition_records)
+        s3_write_parquet(s3, bucket, key, partition_records, schema=FRED_SCHEMA)
         logger.info(f"Written {len(partition_records)} records to s3://{bucket}/{key}")
 
         location = f"s3://{bucket}/macro_indicators/series={series_id}/year={year}/"
