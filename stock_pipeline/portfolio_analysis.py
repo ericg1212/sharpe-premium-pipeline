@@ -14,7 +14,7 @@ import json
 import csv
 import logging
 import numpy as np
-from config import AI_CAPEX
+from config import AI_CAPEX  # noqa: F401 — re-exported for tests
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -314,5 +314,37 @@ def main():
     logger.info("=" * 70)
 
 
+def run_local():
+    """Local demo mode: read from backtest_results.json and print findings without AWS."""
+    results_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backtest_results.json')
+
+    if not os.path.exists(results_path):
+        print(f"ERROR: {results_path} not found.")
+        print("Run 'make analyze' first (requires AWS) to generate local data files.")
+        sys.exit(1)
+
+    import json
+    with open(results_path) as f:
+        results = json.load(f)
+
+    print(f"Loaded {len(results)} stock results from {results_path}\n")
+
+    build_rent = build_vs_rent_analysis(results)
+    if build_rent:
+        print(f"\n  Builder premium: +{build_rent['premium_pct']}% on risk-adjusted returns")
+
+    capex_rows = capex_efficiency_analysis(results)
+    value_chain_summary(results)
+
+    print("\n" + "=" * 70)
+    print("HEADLINE: The market rewards AI builders, not AI renters.")
+    if build_rent:
+        print(f"Builder premium: +{build_rent['premium_pct']}% on risk-adjusted returns.")
+    print("=" * 70)
+
+
 if __name__ == '__main__':
-    main()
+    if '--local' in sys.argv:
+        run_local()
+    else:
+        main()

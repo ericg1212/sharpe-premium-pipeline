@@ -1,37 +1,22 @@
-.PHONY: help setup up down restart logs test lint clean dags status analyze regime
+.PHONY: help setup up down restart logs test lint clean status analyze regime demo
 
 help:
 	@echo "Available commands:"
-	@echo "  make setup    - Copy DAGs and create .env from template"
+	@echo "  make setup    - Create .env from template"
 	@echo "  make up       - Start Airflow stack (Docker Compose)"
 	@echo "  make down     - Stop Airflow stack"
 	@echo "  make restart  - Restart Airflow stack"
 	@echo "  make logs     - Tail Airflow logs"
 	@echo "  make test     - Run pytest unit tests"
 	@echo "  make lint     - Lint Python files with flake8"
-	@echo "  make dags     - Copy pipeline files into ./dags"
 	@echo "  make status   - Show running containers"
 	@echo "  make clean    - Remove logs, __pycache__, and stopped containers"
 	@echo "  make analyze  - Run backtest + portfolio analysis, refresh all CSVs"
 	@echo "  make regime   - Run macro regime analysis (builder premium by regime)"
+	@echo "  make demo     - Run full analysis in local mode (no AWS required)"
 
-setup: dags
+setup:
 	@if [ ! -f .env ]; then cp .env.example .env && echo "Created .env - fill in your API keys"; fi
-
-dags:
-	@mkdir -p dags
-	cp config.py dags/
-	cp utils.py dags/
-	cp stock_pipeline/stock_pipeline.py dags/
-	cp crypto_pipeline/crypto_pipeline.py dags/
-	cp weather_pipeline/weather_pipeline.py dags/
-	cp forecast_pipeline/forecast_pipeline.py dags/
-	cp edgar_pipeline/edgar_pipeline.py dags/
-	cp analysis_pipeline/analysis_pipeline.py dags/
-	cp monitoring/pipeline_monitor.py dags/
-	cp monitoring/data_quality.py dags/
-	cp fred_pipeline/fred_pipeline.py dags/
-	@echo "DAGs copied to ./dags"
 
 up:
 	docker compose up -d
@@ -63,6 +48,12 @@ regime:
 	@set -a && source .env && set +a && \
 	python stock_pipeline/macro_regime_analysis.py
 	@echo "Regime analysis complete — check stock_pipeline/regime_*.csv"
+
+demo:
+	@echo "Running portfolio demo (local mode — no AWS required)..."
+	python stock_pipeline/historical_backtest.py --local
+	python stock_pipeline/portfolio_analysis.py --local
+	@echo "Demo complete. Results in stock_pipeline/*.csv"
 
 clean:
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

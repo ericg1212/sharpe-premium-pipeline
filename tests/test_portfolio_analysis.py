@@ -1,10 +1,17 @@
 """Tests for portfolio analysis functions in stock_pipeline/portfolio_analysis.py."""
 
+import os
+import csv
+import tempfile
+import pytest
+from unittest.mock import patch
+
 from stock_pipeline.portfolio_analysis import (
     build_vs_rent_analysis,
     capex_efficiency_analysis,
     value_chain_summary,
     rolling_sharpe_analysis,
+    save_analysis,
     AI_CAPEX,
 )
 
@@ -148,3 +155,119 @@ class TestRollingSharpeCsv:
         ]
         rows = rolling_sharpe_analysis(results)
         assert rows[0]['category'] == 'AI Builder'
+
+
+class TestSaveAnalysis:
+    """Tests for save_analysis() — file write paths."""
+
+    def _minimal_results(self):
+        return [
+            {
+                'symbol': 'META', 'category': 'AI Builder',
+                'ai_strategy': 'Proprietary (Llama, MTIA chips)',
+                'annualized_return': 45.2, 'annualized_volatility': 28.1,
+                'sharpe_ratio': 2.369, 'max_drawdown': -18.5,
+                'months_analyzed': 36, 'start_date': '2023-01-31', 'end_date': '2025-12-31',
+                'capex_2025_B': 72.2, 'capex_2026_B': 125.0,
+                'ai_pct_of_capex': 95, 'est_ai_spend_2026_B': 118.8,
+                'rolling_sharpe': [{'date': '2024-01-31', 'rolling_sharpe_12m': 2.1}],
+            },
+            {
+                'symbol': 'MSFT', 'category': 'AI Integrator',
+                'ai_strategy': 'Partnership (OpenAI)',
+                'annualized_return': 28.1, 'annualized_volatility': 22.5,
+                'sharpe_ratio': 1.512, 'max_drawdown': -12.3,
+                'months_analyzed': 36, 'start_date': '2023-01-31', 'end_date': '2025-12-31',
+                'capex_2025_B': 80.0, 'capex_2026_B': 145.0,
+                'ai_pct_of_capex': 60, 'est_ai_spend_2026_B': 87.0,
+                'rolling_sharpe': [{'date': '2024-01-31', 'rolling_sharpe_12m': 1.4}],
+            },
+        ]
+
+    def test_save_creates_csv_files(self, sample_backtest_results):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            results = self._minimal_results()
+            build_rent = build_vs_rent_analysis(results)
+            capex_rows = capex_efficiency_analysis(results)
+            chain_summary = value_chain_summary(results)
+            rolling_rows = rolling_sharpe_analysis(results)
+
+            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
+                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+
+            assert os.path.exists(os.path.join(tmpdir, 'backtest_results.csv'))
+            assert os.path.exists(os.path.join(tmpdir, 'powerbi_master.csv'))
+            assert os.path.exists(os.path.join(tmpdir, 'category_summary.csv'))
+            assert os.path.exists(os.path.join(tmpdir, 'build_vs_rent.csv'))
+            assert os.path.exists(os.path.join(tmpdir, 'capex_efficiency.csv'))
+            assert os.path.exists(os.path.join(tmpdir, 'value_chain_summary.csv'))
+            assert os.path.exists(os.path.join(tmpdir, 'rolling_sharpe.csv'))
+
+    def test_powerbi_master_has_build_or_rent_column(self):
+        results = self._minimal_results()
+        build_rent = build_vs_rent_analysis(results)
+        capex_rows = capex_efficiency_analysis(results)
+        chain_summary = value_chain_summary(results)
+        rolling_rows = rolling_sharpe_analysis(results)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
+                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+
+            pbi_path = os.path.join(tmpdir, 'powerbi_master.csv')
+            with open(pbi_path) as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+
+            assert len(rows) == 2
+            assert rows[0]['build_or_rent'] == 'Build'
+            assert rows[1]['build_or_rent'] == 'Rent'
+
+    def test_category_summary_averages(self):
+        results = self._minimal_results()
+        build_rent = build_vs_rent_analysis(results)
+        capex_rows = capex_efficiency_analysis(results)
+        chain_summary = value_chain_summary(results)
+        rolling_rows = rolling_sharpe_analysis(results)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
+                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+
+            cat_path = os.path.join(tmpdir, 'category_summary.csv')
+            with open(cat_path) as f:
+                reader = csv.DictReader(f)
+                rows = {r['category']: r for r in reader}
+
+            assert 'AI Builder' in rows
+            assert float(rows['AI Builder']['avg_sharpe']) == pytest.approx(2.369, abs=0.001)
+
+    def test_rolling_sharpe_csv_not_written_when_empty(self):
+        results = [
+            {
+                'symbol': 'META', 'category': 'AI Builder',
+                'ai_strategy': 'X',
+                'annualized_return': 45.2, 'annualized_volatility': 28.1,
+                'sharpe_ratio': 2.369, 'max_drawdown': -18.5,
+                'months_analyzed': 36, 'start_date': '2023-01-31', 'end_date': '2025-12-31',
+                'rolling_sharpe': [],
+            },
+            {
+                'symbol': 'MSFT', 'category': 'AI Integrator',
+                'ai_strategy': 'Y',
+                'annualized_return': 28.1, 'annualized_volatility': 22.5,
+                'sharpe_ratio': 1.512, 'max_drawdown': -12.3,
+                'months_analyzed': 36, 'start_date': '2023-01-31', 'end_date': '2025-12-31',
+                'rolling_sharpe': [],
+            },
+        ]
+        build_rent = build_vs_rent_analysis(results)
+        capex_rows = capex_efficiency_analysis(results)
+        chain_summary = value_chain_summary(results)
+        rolling_rows = rolling_sharpe_analysis(results)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
+                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+
+            assert not os.path.exists(os.path.join(tmpdir, 'rolling_sharpe.csv'))

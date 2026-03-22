@@ -214,7 +214,7 @@ data-engineering-portfolio/
 │   ├── variables.tf
 │   └── outputs.tf
 ├── docker-compose.yaml               # Airflow cluster (6 containers)
-├── Makefile                          # make up/down/dags/test/lint/analyze
+├── Makefile                          # make up/down/test/lint/analyze/demo
 ├── LICENSE                           # MIT
 ├── .github/workflows/ci.yml          # CI: lint, pytest, bandit, pip-audit, checkov, terraform fmt
 ├── .github/workflows/codeql.yml      # CodeQL semantic analysis
@@ -247,10 +247,7 @@ cp .env.example .env
 # 3. Start Airflow
 docker compose up -d
 
-# 4. Copy DAGs to Airflow
-make dags
-
-# 5. Access Airflow UI
+# 4. Access Airflow UI
 # http://localhost:8090 (airflow/airflow)
 
 # 6. Run the historical backtest + portfolio analysis
@@ -259,13 +256,13 @@ make analyze
 
 ### Makefile Commands
 ```bash
-make setup    # Copy DAGs + create .env from template
+make setup    # Create .env from template
 make up       # Start Airflow stack
 make down     # Stop Airflow stack
-make dags     # Copy all pipeline files into ./dags
-make test     # Run pytest (188 tests)
+make test     # Run pytest
 make lint     # flake8 across all source dirs
 make analyze  # Run backtest + portfolio analysis, refresh all CSVs
+make demo     # Run full analysis in local mode (no AWS required)
 make logs     # Tail scheduler + worker logs
 make clean    # Remove __pycache__, logs, stopped containers
 ```

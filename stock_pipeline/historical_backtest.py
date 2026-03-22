@@ -291,5 +291,45 @@ def run_backtest():
     return df
 
 
+def run_local():
+    """Local demo mode: load from backtest_results.csv and print findings without AWS."""
+    output_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(output_dir, 'backtest_results.csv')
+
+    if not os.path.exists(csv_path):
+        print(f"ERROR: {csv_path} not found.")
+        print("Run 'make analyze' first (requires AWS) to generate local CSV files.")
+        sys.exit(1)
+
+    import csv
+    with open(csv_path) as f:
+        results = list(csv.DictReader(f))
+
+    print("=" * 70)
+    print("LOCAL DEMO: AI Value Chain Sharpe Analysis")
+    print(f"Loaded {len(results)} stocks from {csv_path}")
+    print("=" * 70)
+
+    for r in results:
+        print(
+            f"  {r['symbol']:5s} ({r['category']:16s}): "
+            f"Return={r['annualized_return']:>7}%, "
+            f"Vol={r['annualized_volatility']:>6}%, "
+            f"Sharpe={r['sharpe_ratio']}"
+        )
+
+    builders = [r for r in results if r['category'] == 'AI Builder']
+    integrators = [r for r in results if r['category'] == 'AI Integrator']
+    if builders and integrators:
+        b_sharpe = sum(float(r['sharpe_ratio']) for r in builders) / len(builders)
+        i_sharpe = sum(float(r['sharpe_ratio']) for r in integrators) / len(integrators)
+        premium = (b_sharpe - i_sharpe) / abs(i_sharpe) * 100 if i_sharpe != 0 else 0
+        print(f"\n  Builder premium: {premium:+.1f}% on risk-adjusted returns")
+    print("=" * 70)
+
+
 if __name__ == '__main__':
-    run_backtest()
+    if '--local' in sys.argv:
+        run_local()
+    else:
+        run_backtest()
