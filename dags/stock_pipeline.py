@@ -6,11 +6,22 @@ import logging
 import os
 from time import sleep
 from config import STOCK_SYMBOLS, RATE_LIMIT_DELAY
-from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+from utils import (
+    _s3_client, _athena_client, get_date_str,
+    s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
+)
 from data_quality import validate_stock_data, log_data_stats
 
 # Setup logging
 logger = logging.getLogger(__name__)
+
+
+def log_failure(context):
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    execution_date = context['execution_date']
+    logging.error(f"DAG {dag_id} task {task_id} failed at {execution_date}")
+
 
 # Default arguments
 default_args = {
@@ -20,6 +31,7 @@ default_args = {
     'email_on_failure': False,
     'retries': 2,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': log_failure,
 }
 
 # Define DAG

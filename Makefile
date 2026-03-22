@@ -1,4 +1,4 @@
-.PHONY: help setup up down restart logs test lint clean dags status analyze
+.PHONY: help setup up down restart logs test lint clean dags status analyze regime
 
 help:
 	@echo "Available commands:"
@@ -13,6 +13,7 @@ help:
 	@echo "  make status   - Show running containers"
 	@echo "  make clean    - Remove logs, __pycache__, and stopped containers"
 	@echo "  make analyze  - Run backtest + portfolio analysis, refresh all CSVs"
+	@echo "  make regime   - Run macro regime analysis (builder premium by regime)"
 
 setup: dags
 	@if [ ! -f .env ]; then cp .env.example .env && echo "Created .env - fill in your API keys"; fi
@@ -57,6 +58,11 @@ analyze:
 	python stock_pipeline/historical_backtest.py && \
 	python stock_pipeline/portfolio_analysis.py
 	@echo "All CSVs refreshed — refresh Power BI to update dashboard"
+
+regime:
+	@set -a && source .env && set +a && \
+	python stock_pipeline/macro_regime_analysis.py
+	@echo "Regime analysis complete — check stock_pipeline/regime_*.csv"
 
 clean:
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

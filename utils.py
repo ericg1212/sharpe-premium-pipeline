@@ -86,6 +86,35 @@ def s3_write_parquet(s3, bucket, key, records):
     )
 
 
+# Use run_etl() for new pipelines; existing pipelines pre-date this pattern.
+def run_etl(name, extract_fn, transform_fn, load_fn, logger):
+    logger.info(f"{name}: extract start")
+    try:
+        raw = extract_fn()
+    except Exception as e:
+        logger.error(f"{name}: extract failed: {e}")
+        raise
+    logger.info(f"{name}: extract success")
+
+    logger.info(f"{name}: transform start")
+    try:
+        transformed = transform_fn(raw)
+    except Exception as e:
+        logger.error(f"{name}: transform failed: {e}")
+        raise
+    logger.info(f"{name}: transform success")
+
+    logger.info(f"{name}: load start")
+    try:
+        result = load_fn(transformed)
+    except Exception as e:
+        logger.error(f"{name}: load failed: {e}")
+        raise
+    logger.info(f"{name}: load success")
+
+    return result
+
+
 def register_athena_partition(athena, table, partition_key, partition_value, s3_location):
     """Register a single date-style partition with Athena.
 

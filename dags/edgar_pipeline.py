@@ -21,10 +21,20 @@ from datetime import datetime
 from time import sleep
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+import pandas as pd
 from config import EDGAR_CIKS, GLUE_DATABASE, ATHENA_WORKGROUP
 from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet
+from data_quality import validate_edgar_data
 
 logger = logging.getLogger(__name__)
+
+
+def log_failure(context):
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    execution_date = context['execution_date']
+    logging.error(f"DAG {dag_id} task {task_id} failed at {execution_date}")
+
 
 # Revenue tags vary by company — try in order, use first with data
 REVENUE_TAGS = [
@@ -42,6 +52,7 @@ default_args = {
     'start_date': datetime(2026, 1, 1),
     'email_on_failure': False,
     'retries': 2,
+    'on_failure_callback': log_failure,
 }
 
 dag = DAG(
@@ -168,6 +179,16 @@ def transform_fundamentals():
 
     if not records:
         raise Exception("No fundamental records extracted")
+
+    # Validate — rename to match validator's expected schema
+    records_df = pd.DataFrame(records)
+    validation_df = records_df.rename(columns={'capex_usd': 'capex', 'revenue_usd': 'revenue'})
+    validation_df = validation_df.dropna(subset=['revenue'])  # revenue may be None when tag missing
+    if not validation_df.empty:
+        result = validate_edgar_data(validation_df)
+        if not result['valid']:
+            for err in result['errors']:
+                logger.error(f"EDGAR data quality error: {err}")
 
     transformed_key = f"tmp/edgar/transformed/{date_str}.json"
     s3_write_json(s3, bucket, transformed_key, records)

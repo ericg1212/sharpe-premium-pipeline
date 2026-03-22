@@ -8,6 +8,14 @@ from utils import _s3_client, get_date_str
 
 logger = logging.getLogger(__name__)
 
+
+def log_failure(context):
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    execution_date = context['execution_date']
+    logging.error(f"DAG {dag_id} task {task_id} failed at {execution_date}")
+
+
 default_args = {
     'owner': 'eric',
     'depends_on_past': False,
@@ -15,6 +23,7 @@ default_args = {
     'email_on_failure': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=2),
+    'on_failure_callback': log_failure,
 }
 
 dag = DAG(

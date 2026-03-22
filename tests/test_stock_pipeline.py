@@ -4,10 +4,12 @@ import io
 import json
 import pytest
 from datetime import datetime
+from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
+import requests
 import pyarrow.parquet as pq
 
-from stock_pipeline.stock_pipeline import transform_stock_data, load_to_s3
+from stock_pipeline.stock_pipeline import extract_stock_data, transform_stock_data, load_to_s3
 
 # ── Sample data ───────────────────────────────────────────────────────────────
 
@@ -158,3 +160,88 @@ class TestLoadStockToS3:
         for record in records:
             assert 'symbol' in record
             assert 'price' in record
+
+
+# ── Extract tests ──────────────────────────────────────────────────────────────
+
+def _make_global_quote(symbol):
+    return {
+        'Global Quote': {
+            '01. symbol': symbol,
+            '05. price': '100.00',
+            '06. volume': '1000000',
+            '07. latest trading day': '2026-03-01',
+            '08. previous close': '99.00',
+            '09. change': '1.00',
+            '10. change percent': '1.01%',
+        }
+    }
+
+
+class TestExtractStockData:
+    """Tests for extract_stock_data() — HTTP-level mocking only, no S3."""
+
+    def test_extract_returns_expected_symbols(self, s3_client, monkeypatch):
+        monkeypatch.setenv('ALPHA_VANTAGE_API_KEY', 'test-key')
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+
+        def side_effect(url, timeout):
+            symbol = url.split('symbol=')[1].split('&')[0]
+            mock_response.json.return_value = _make_global_quote(symbol)
+            return mock_response
+
+        with patch('stock_pipeline.stock_pipeline.requests.get', side_effect=side_effect), \
+             patch('stock_pipeline.stock_pipeline.sleep'):
+            result = extract_stock_data()
+
+        from config import STOCK_SYMBOLS
+        returned_symbols = {r['symbol'] for r in result}
+        assert returned_symbols == set(STOCK_SYMBOLS)
+
+    def test_extract_skips_missing_data(self, s3_client, monkeypatch):
+        monkeypatch.setenv('ALPHA_VANTAGE_API_KEY', 'test-key')
+
+        from config import STOCK_SYMBOLS
+        skip_symbol = STOCK_SYMBOLS[0]
+
+        def side_effect(url, timeout):
+            symbol = url.split('symbol=')[1].split('&')[0]
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            if symbol == skip_symbol:
+                mock_response.json.return_value = {'Global Quote': {}}
+            else:
+                mock_response.json.return_value = _make_global_quote(symbol)
+            return mock_response
+
+        with patch('stock_pipeline.stock_pipeline.requests.get', side_effect=side_effect), \
+             patch('stock_pipeline.stock_pipeline.sleep'):
+            result = extract_stock_data()
+
+        returned_symbols = {r['symbol'] for r in result}
+        assert skip_symbol not in returned_symbols
+        assert len(returned_symbols) == len(STOCK_SYMBOLS) - 1
+
+    def test_extract_raises_on_all_failures(self, s3_client, monkeypatch):
+        monkeypatch.setenv('ALPHA_VANTAGE_API_KEY', 'test-key')
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {'Global Quote': {}}
+
+        with patch('stock_pipeline.stock_pipeline.requests.get', return_value=mock_response), \
+             patch('stock_pipeline.stock_pipeline.sleep'):
+            with pytest.raises(Exception, match="No stock data extracted"):
+                extract_stock_data()
+
+    def test_extract_handles_request_exception(self, s3_client, monkeypatch):
+        monkeypatch.setenv('ALPHA_VANTAGE_API_KEY', 'test-key')
+
+        with patch(
+            'stock_pipeline.stock_pipeline.requests.get',
+            side_effect=requests.exceptions.RequestException("connection refused"),
+        ), patch('stock_pipeline.stock_pipeline.sleep'):
+            with pytest.raises(Exception, match="No stock data extracted"):
+                extract_stock_data()

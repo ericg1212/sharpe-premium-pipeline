@@ -4,10 +4,13 @@ import io
 import json
 import pytest
 from datetime import datetime
+from unittest.mock import patch, MagicMock, call
 from botocore.exceptions import ClientError
 import pyarrow.parquet as pq
 
-from edgar_pipeline.edgar_pipeline import _extract_annual_records, transform_fundamentals, load_to_s3
+from edgar_pipeline.edgar_pipeline import (
+    extract_edgar_data, _extract_annual_records, transform_fundamentals, load_to_s3
+)
 
 # ── Sample EDGAR raw data ──────────────────────────────────────────────────────
 
@@ -320,3 +323,99 @@ class TestLoadEdgarToS3:
         """No transformed key seeded in S3 → ClientError (NoSuchKey)."""
         with pytest.raises(ClientError):
             load_to_s3()
+
+
+# ── Extract tests ───────────────────────────────────────────────────────────────
+
+def _make_edgar_response(cik, include_capex=True):
+    facts = {'us-gaap': {}}
+    if include_capex:
+        facts['us-gaap']['PaymentsToAcquirePropertyPlantAndEquipment'] = {
+            'units': {
+                'USD': [
+                    {'fp': 'FY', 'form': '10-K', 'fy': 2023, 'val': 37000000000,
+                     'end': '2023-12-31', 'filed': '2024-02-01'},
+                ]
+            }
+        }
+    facts['us-gaap']['RevenueFromContractWithCustomerExcludingAssessedTax'] = {
+        'units': {
+            'USD': [
+                {'fp': 'FY', 'form': '10-K', 'fy': 2023, 'val': 134902000000,
+                 'end': '2023-12-31', 'filed': '2024-02-01'},
+            ]
+        }
+    }
+    return {
+        'entityName': f'Entity {cik}',
+        'facts': facts,
+    }
+
+
+class TestExtractEdgarData:
+    """Tests for extract_edgar_data() — HTTP-level mocking only."""
+
+    def test_extract_edgar_returns_all_companies(self, s3_client, monkeypatch):
+        from config import EDGAR_CIKS
+
+        def side_effect(url, headers, timeout):
+            cik = url.split('CIK')[1].replace('.json', '')
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            mock_response.json.return_value = _make_edgar_response(cik)
+            return mock_response
+
+        with patch('edgar_pipeline.edgar_pipeline.requests.get', side_effect=side_effect), \
+             patch('edgar_pipeline.edgar_pipeline.sleep'):
+            extract_edgar_data()
+
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        obj = s3_client.get_object(Bucket='test-bucket', Key=f'tmp/edgar/raw/{date_str}.json')
+        result = json.loads(obj['Body'].read())
+
+        assert set(result.keys()) == set(EDGAR_CIKS.keys())
+
+    def test_extract_edgar_missing_tag_handled(self, s3_client, monkeypatch):
+        """Company missing capex tag: extract succeeds, transform will skip it."""
+        from config import EDGAR_CIKS
+
+        symbols = list(EDGAR_CIKS.items())
+        skip_symbol = symbols[0][0]
+
+        def side_effect(url, headers, timeout):
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            cik = url.split('CIK')[1].replace('.json', '')
+            symbol_for_cik = next(
+                (s for s, c in EDGAR_CIKS.items() if c == cik), None
+            )
+            include_capex = symbol_for_cik != skip_symbol
+            mock_response.json.return_value = _make_edgar_response(cik, include_capex=include_capex)
+            return mock_response
+
+        with patch('edgar_pipeline.edgar_pipeline.requests.get', side_effect=side_effect), \
+             patch('edgar_pipeline.edgar_pipeline.sleep'):
+            extract_edgar_data()  # must not raise
+
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        obj = s3_client.get_object(Bucket='test-bucket', Key=f'tmp/edgar/raw/{date_str}.json')
+        result = json.loads(obj['Body'].read())
+        assert skip_symbol in result  # raw data still stored; transform skips missing capex
+
+    def test_extract_edgar_rate_limit_sleep(self, s3_client, monkeypatch):
+        from config import EDGAR_CIKS
+
+        def side_effect(url, headers, timeout):
+            cik = url.split('CIK')[1].replace('.json', '')
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            mock_response.json.return_value = _make_edgar_response(cik)
+            return mock_response
+
+        with patch('edgar_pipeline.edgar_pipeline.requests.get', side_effect=side_effect), \
+             patch('edgar_pipeline.edgar_pipeline.sleep') as mock_sleep:
+            extract_edgar_data()
+
+        # sleep called once between each company: n-1 times for n companies
+        expected_calls = len(EDGAR_CIKS) - 1
+        assert mock_sleep.call_count == expected_calls

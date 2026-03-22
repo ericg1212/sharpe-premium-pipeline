@@ -15,6 +15,14 @@ from data_quality import validate_stock_data, log_data_stats
 # Setup logging
 logger = logging.getLogger(__name__)
 
+
+def log_failure(context):
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    execution_date = context['execution_date']
+    logging.error(f"DAG {dag_id} task {task_id} failed at {execution_date}")
+
+
 # Default arguments
 default_args = {
     'owner': 'eric',
@@ -23,6 +31,7 @@ default_args = {
     'email_on_failure': False,
     'retries': 2,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': log_failure,
 }
 
 # Define DAG

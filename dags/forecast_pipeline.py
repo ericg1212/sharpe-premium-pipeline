@@ -6,9 +6,17 @@ import logging
 import os
 from config import WEATHER_CITY
 from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet, register_athena_partition
-from data_quality import log_data_stats
+from data_quality import validate_weather_data, log_data_stats
 
 logger = logging.getLogger(__name__)
+
+
+def log_failure(context):
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    execution_date = context['execution_date']
+    logging.error(f"DAG {dag_id} task {task_id} failed at {execution_date}")
+
 
 default_args = {
     'owner': 'eric',
@@ -17,6 +25,7 @@ default_args = {
     'email_on_failure': False,
     'retries': 2,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': log_failure,
 }
 
 dag = DAG(
@@ -79,6 +88,12 @@ def transform_forecast():
     s3_write_json(s3, bucket, transformed_key, records)
     logger.info(f"Transformed data written to s3://{bucket}/{transformed_key}")
 
+    for record in records:
+        try:
+            validate_weather_data(record)
+        except Exception as e:
+            logger.error(f"Data quality check failed: {str(e)}")
+            raise
     log_data_stats(records, "forecast_data")
     logger.info(f"Transformed {len(records)} forecast periods")
     return len(records)

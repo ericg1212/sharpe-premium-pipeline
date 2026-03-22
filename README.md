@@ -8,11 +8,11 @@
 ![Power BI](https://img.shields.io/badge/Power%20BI-F2C811?style=flat-square&logo=powerbi&logoColor=black)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 &nbsp;
-![Pipelines](https://img.shields.io/badge/Pipelines-5-brightgreen?style=flat-square)
-![Tests](https://img.shields.io/badge/Tests-163-brightgreen?style=flat-square)
+![Pipelines](https://img.shields.io/badge/Pipelines-4-brightgreen?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-147-brightgreen?style=flat-square)
 ![Stocks](https://img.shields.io/badge/Stocks%20Analyzed-10-blue?style=flat-square)
 
-A data engineering portfolio proving a **+111.5% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Five production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, FRED, Coinbase, and OpenWeatherMap — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 163 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
+A data engineering portfolio proving a **+111.5% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 147 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
 
 ## Key Finding: The Market Rewards AI Builders, Not AI Renters
 
@@ -43,11 +43,11 @@ In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more does
 │   Data Sources    │────>│Apache Airflow│────>│  AWS S3   │────>│ Athena  │
 │                   │     │  (Docker)    │     │(Data Lake)│     │ (Query) │
 │ Alpha Vantage     │     │              │     │           │     └────┬────┘
-│ SEC EDGAR         │     │ 5 scheduled  │     │Partitioned│          │
+│ SEC EDGAR         │     │ 4 production │     │Partitioned│          │
 │ FRED (St. Louis   │     │ DAGs +       │     │by symbol/ │     ┌────▼────┐
 │   Fed)            │     │ analysis     │     │date/series│     │Power BI │
-│ Coinbase          │     │ pipeline     │     │           │     │(Dashboard)│
-│ OpenWeatherMap    │     └──────────────┘     └───────────┘     └─────────┘
+│                   │     │ pipeline     │     │           │     │(Dashboard)│
+│                   │     └──────────────┘     └───────────┘     └─────────┘
 └──────────────────┘
 ```
 
@@ -80,8 +80,6 @@ In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more does
 - Replaces the manual `make analyze` command
 
 ### Additional Pipelines
-- **Crypto** (`crypto_pipeline/crypto_pipeline.py`): BTC, ETH, SOL via Coinbase API (6-hour schedule)
-- **Weather** (`weather_pipeline/weather_pipeline.py`): Brooklyn, NY via OpenWeatherMap (daily)
 - **Forecast** (`forecast_pipeline/forecast_pipeline.py`): 5-day forecast via OpenWeatherMap (daily 6 AM)
 - **Monitor** (`monitoring/pipeline_monitor.py`): Health checks across all pipelines
 
@@ -121,14 +119,14 @@ terraform plan       # Preview resources (no changes applied)
 | CI/CD | GitHub Actions (lint, pytest, CodeQL, Scorecard, SBOM, dependency review) |
 | Language | Python 3.12 |
 | Key Libraries | boto3, pandas, numpy, pyarrow, requests |
-| Testing | pytest + moto (163 tests, AWS mocked at HTTP layer) |
+| Testing | pytest + moto (147 tests, AWS mocked at HTTP layer) |
 
 ## Testing
 
-163 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
+147 tests across all pipelines, using moto to mock AWS at the HTTP layer — no real AWS calls in CI.
 
 ```bash
-pytest tests/ -v        # Run all 163 tests
+pytest tests/ -v        # Run all 147 tests
 pytest tests/test_edgar_pipeline.py -v   # Single pipeline
 make lint               # flake8 across all source dirs
 ```
@@ -143,9 +141,7 @@ make lint               # flake8 across all source dirs
 | test_fred_pipeline.py | 11 | transform + load (Parquet) |
 | test_portfolio_analysis.py | 10 | portfolio metrics |
 | test_stock_pipeline.py | 9 | transform + load (Parquet) |
-| test_weather_pipeline.py | 8 | transform + load (Parquet) |
 | test_sharpe_calculation.py | 8 | Sharpe math |
-| test_crypto_pipeline.py | 8 | transform + load (Parquet) |
 | test_forecast_pipeline.py | 7 | transform + load (Parquet) |
 | test_analysis_pipeline.py | 6 | DAG structure |
 
@@ -192,10 +188,6 @@ data-engineering-portfolio/
 │   └── fred_pipeline.py              # Airflow DAG: FRED macro indicators
 ├── analysis_pipeline/
 │   └── analysis_pipeline.py          # Airflow DAG: automated backtest trigger
-├── crypto_pipeline/
-│   └── crypto_pipeline.py            # Airflow DAG: BTC, ETH, SOL
-├── weather_pipeline/
-│   └── weather_pipeline.py           # Airflow DAG: Brooklyn weather
 ├── forecast_pipeline/
 │   └── forecast_pipeline.py          # Airflow DAG: 5-day forecast
 ├── monitoring/
@@ -206,12 +198,10 @@ data-engineering-portfolio/
 │   ├── test_utils.py                 # 30 tests for shared utils helpers
 │   ├── test_finance_utils.py         # 16 tests for finance math functions
 │   ├── test_stock_pipeline.py
-│   ├── test_crypto_pipeline.py
 │   ├── test_edgar_pipeline.py
 │   ├── test_fred_pipeline.py
 │   ├── test_historical_backfill.py
 │   ├── test_analysis_pipeline.py
-│   ├── test_weather_pipeline.py
 │   ├── test_forecast_pipeline.py
 │   ├── test_sharpe_calculation.py
 │   ├── test_data_quality.py
@@ -241,7 +231,7 @@ data-engineering-portfolio/
 - Docker Desktop
 - Python 3.12+
 - AWS account (S3, Athena, Glue)
-- API keys: Alpha Vantage, OpenWeatherMap, FRED (free at fred.stlouisfed.org/docs/api/api_key.html)
+- API keys: Alpha Vantage, FRED (free at fred.stlouisfed.org/docs/api/api_key.html), OpenWeatherMap (for forecast pipeline)
 
 ### Quick Start
 ```bash
@@ -272,7 +262,7 @@ make setup    # Copy DAGs + create .env from template
 make up       # Start Airflow stack
 make down     # Stop Airflow stack
 make dags     # Copy all pipeline files into ./dags
-make test     # Run pytest (163 tests)
+make test     # Run pytest (147 tests)
 make lint     # flake8 across all source dirs
 make analyze  # Run backtest + portfolio analysis, refresh all CSVs
 make logs     # Tail scheduler + worker logs
@@ -286,7 +276,6 @@ make clean    # Remove __pycache__, logs, stopped containers
 | [Alpha Vantage](https://www.alphavantage.co/) | Stock quotes + monthly history | Daily prices | 25 calls/day (free) |
 | [SEC EDGAR](https://www.sec.gov/developer) | Company Facts API | Annual 10-K filings | No limit (free) |
 | [FRED](https://fred.stlouisfed.org/docs/api/fred/) | Observations API | Macro indicators | No limit (free, key required) |
-| [Coinbase](https://docs.cdp.coinbase.com/coinbase-app/docs/api-prices) | Spot prices | Crypto | No limit (public) |
 | [OpenWeatherMap](https://openweathermap.org/api) | Current + forecast | Weather | 1,000 calls/day (free) |
 
 ---

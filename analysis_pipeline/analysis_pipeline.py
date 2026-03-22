@@ -15,6 +15,15 @@ historical_backtest.py is updated to read from Athena instead.
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
+import logging
+
+
+def log_failure(context):
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    execution_date = context['execution_date']
+    logging.error(f"DAG {dag_id} task {task_id} failed at {execution_date}")
+
 
 default_args = {
     'owner': 'eric',
@@ -23,6 +32,7 @@ default_args = {
     'email_on_failure': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': log_failure,
 }
 
 dag = DAG(

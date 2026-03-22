@@ -25,13 +25,23 @@ from datetime import datetime
 from collections import defaultdict
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+import pandas as pd
 from config import GLUE_DATABASE, ATHENA_WORKGROUP, FRED_SERIES
 from utils import _s3_client, _athena_client, get_date_str, s3_read_json, s3_write_json, s3_write_parquet
+from monitoring.data_quality import validate_fred_data
 
 logger = logging.getLogger(__name__)
 
 FRED_BASE_URL = 'https://api.stlouisfed.org/fred/series/observations'
 OBSERVATION_START = '2020-01-01'  # aligns with edgar 2020 cutoff
+
+
+def log_failure(context):
+    dag_id = context['dag'].dag_id
+    task_id = context['task_instance'].task_id
+    execution_date = context['execution_date']
+    logging.error(f"DAG {dag_id} task {task_id} failed at {execution_date}")
+
 
 default_args = {
     'owner': 'eric',
@@ -39,6 +49,7 @@ default_args = {
     'start_date': datetime(2026, 2, 1),
     'email_on_failure': False,
     'retries': 2,
+    'on_failure_callback': log_failure,
 }
 
 dag = DAG(
@@ -129,6 +140,15 @@ def transform_fred_data():
 
     if not records:
         raise Exception("No FRED records extracted — all values missing or API error")
+
+    # Validate per series
+    records_df = pd.DataFrame(records)
+    for sid in records_df['series_id'].unique():
+        series_df = records_df[records_df['series_id'] == sid]
+        result = validate_fred_data(series_df, sid)
+        if not result['valid']:
+            for err in result['errors']:
+                logger.error(f"FRED data quality error [{sid}]: {err}")
 
     transformed_key = f"tmp/fred/transformed/{get_date_str()}.json"
     s3_write_json(s3, bucket, transformed_key, records)

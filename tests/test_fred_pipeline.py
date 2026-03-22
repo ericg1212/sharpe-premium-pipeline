@@ -4,10 +4,11 @@ import io
 import json
 import pytest
 from datetime import datetime
+from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
 import pyarrow.parquet as pq
 
-from fred_pipeline.fred_pipeline import transform_fred_data, load_to_s3
+from fred_pipeline.fred_pipeline import extract_fred_data, transform_fred_data, load_to_s3
 
 # ── Sample FRED raw data ───────────────────────────────────────────────────────
 
@@ -200,3 +201,72 @@ class TestLoadFredToS3:
         """No transformed key seeded → ClientError (NoSuchKey)."""
         with pytest.raises(ClientError):
             load_to_s3()
+
+
+# ── Extract tests ───────────────────────────────────────────────────────────────
+
+def _make_fred_response(series_id, observations):
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.return_value = {'observations': observations}
+    return mock_response
+
+
+SAMPLE_OBSERVATIONS = [
+    {'date': '2023-01-01', 'value': '3.88'},
+    {'date': '2023-02-01', 'value': '3.92'},
+    {'date': '2023-03-01', 'value': '.'},   # missing — must be dropped
+]
+
+
+class TestExtractFredData:
+    """Tests for extract_fred_data() — HTTP-level mocking only."""
+
+    def test_extract_fred_returns_all_series(self, s3_client, monkeypatch):
+        monkeypatch.setenv('FRED_API_KEY', 'test-key')
+
+        from config import FRED_SERIES
+
+        def side_effect(url, params, timeout):
+            return _make_fred_response(params['series_id'], SAMPLE_OBSERVATIONS)
+
+        with patch('fred_pipeline.fred_pipeline.requests.get', side_effect=side_effect):
+            extract_fred_data()
+
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        obj = s3_client.get_object(Bucket='test-bucket', Key=f'tmp/fred/raw/{date_str}.json')
+        result = json.loads(obj['Body'].read())
+
+        assert set(result.keys()) == set(FRED_SERIES.keys())
+
+    def test_extract_fred_api_error(self, s3_client, monkeypatch):
+        monkeypatch.setenv('FRED_API_KEY', 'test-key')
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = Exception("400 Bad Request")
+
+        with patch('fred_pipeline.fred_pipeline.requests.get', return_value=mock_response):
+            with pytest.raises(Exception):
+                extract_fred_data()
+
+    def test_extract_fred_missing_dot_values_dropped(self, s3_client, monkeypatch):
+        """Observations with value='.' are stored raw by extract; transform drops them.
+        This test verifies the raw payload preserves all observations including '.' ones,
+        which transform_fred_data then filters out."""
+        monkeypatch.setenv('FRED_API_KEY', 'test-key')
+
+        from config import FRED_SERIES
+
+        def side_effect(url, params, timeout):
+            return _make_fred_response(params['series_id'], SAMPLE_OBSERVATIONS)
+
+        with patch('fred_pipeline.fred_pipeline.requests.get', side_effect=side_effect):
+            extract_fred_data()
+
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        obj = s3_client.get_object(Bucket='test-bucket', Key=f'tmp/fred/raw/{date_str}.json')
+        raw = json.loads(obj['Body'].read())
+
+        first_series = next(iter(raw.values()))
+        dot_obs = [o for o in first_series['observations'] if o['value'] == '.']
+        assert len(dot_obs) == 1  # raw preserves them; transform drops them
