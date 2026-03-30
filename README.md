@@ -26,7 +26,7 @@ Analysis of risk-adjusted returns (Jan 2023 – present) across 10 major tech st
 | Control | AAPL, TSLA | 1.061 | Mixed AI exposure |
 | Legacy Tech | CRM, ORCL, ADBE | 0.257 | Traditional software |
 
-**Builder Premium: +94.5%** — Companies building proprietary AI outperform those renting it through partnerships by 94% on risk-adjusted returns. The premium has widened from +58.4% (Dec 2025) as AI integrators weakened in early 2026 while builders held up.
+**Builder Premium: +94.5%** — Companies building proprietary AI outperform those renting it through partnerships by 94% on risk-adjusted returns. Confirmed Q1 2026 — narrowed from the peak through a software sector correction, but direction held.
 
 Spearman rank correlation between AI% of capex and Sharpe ratio: **ρ = +0.800** — the premium holds stock by stock, not just in aggregate.
 
