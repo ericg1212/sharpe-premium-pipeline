@@ -1,5 +1,5 @@
 symbol,category,sharpe,total_capex_2026,ai_pct,ai_spend_2026,capex_to_revenue_pct,sharpe_per_B
-META,AI Builder,1.735,125.0,95,118.8,66.5,1.4611
-GOOGL,AI Builder,1.547,180.0,80,144.0,51.4,1.0743
-MSFT,AI Integrator,0.569,145.0,60,87.0,55.3,0.654
-AMZN,AI Integrator,1.197,200.0,40,80.0,31.3,1.4963
+META,AI Builder,1.902,125.0,95,118.8,66.5,1.6017
+GOOGL,AI Builder,1.641,180.0,80,144.0,51.4,1.1396
+MSFT,AI Integrator,0.624,145.0,60,87.0,55.3,0.7172
+AMZN,AI Integrator,1.221,200.0,40,80.0,31.3,1.5263

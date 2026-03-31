@@ -3,9 +3,9 @@
     "symbol": "NVDA",
     "category": "Infrastructure",
     "ai_strategy": "Sells AI hardware",
-    "annualized_return": 130.31,
-    "annualized_volatility": 44.5,
-    "sharpe_ratio": 2.838,
+    "annualized_return": 132.71,
+    "annualized_volatility": 44.23,
+    "sharpe_ratio": 2.91,
     "max_drawdown": -21.6,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
@@ -121,7 +121,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": 1.277
+        "rolling_sharpe_12m": 1.409
       }
     ]
   },
@@ -129,10 +129,10 @@
     "symbol": "META",
     "category": "AI Builder",
     "ai_strategy": "Proprietary (Llama, MTIA chips)",
-    "annualized_return": 67.62,
-    "annualized_volatility": 36.66,
-    "sharpe_ratio": 1.735,
-    "max_drawdown": -32.03,
+    "annualized_return": 71.28,
+    "annualized_volatility": 35.38,
+    "sharpe_ratio": 1.902,
+    "max_drawdown": -25.85,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
     "end_date": "2026-03-01",
@@ -247,7 +247,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": -0.181
+        "rolling_sharpe_12m": 0.02
       }
     ],
     "capex_2025_B": 72.2,
@@ -259,9 +259,9 @@
     "symbol": "GOOGL",
     "category": "AI Builder",
     "ai_strategy": "Proprietary (Gemini, TPUs)",
-    "annualized_return": 47.76,
-    "annualized_volatility": 28.29,
-    "sharpe_ratio": 1.547,
+    "annualized_return": 49.48,
+    "annualized_volatility": 27.72,
+    "sharpe_ratio": 1.641,
     "max_drawdown": -24.2,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
@@ -377,7 +377,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": 1.965
+        "rolling_sharpe_12m": 2.255
       }
     ],
     "capex_2025_B": 75.0,
@@ -389,10 +389,10 @@
     "symbol": "MSFT",
     "category": "AI Integrator",
     "ai_strategy": "Partnership (OpenAI)",
-    "annualized_return": 16.91,
-    "annualized_volatility": 22.68,
-    "sharpe_ratio": 0.569,
-    "max_drawdown": -32.34,
+    "annualized_return": 17.94,
+    "annualized_volatility": 22.34,
+    "sharpe_ratio": 0.624,
+    "max_drawdown": -30.21,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
     "end_date": "2026-03-01",
@@ -507,7 +507,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": -0.143
+        "rolling_sharpe_12m": -0.043
       }
     ],
     "capex_2025_B": 80.0,
@@ -519,9 +519,9 @@
     "symbol": "AMZN",
     "category": "AI Integrator",
     "ai_strategy": "Partnership (Anthropic)",
-    "annualized_return": 36.13,
-    "annualized_volatility": 26.85,
-    "sharpe_ratio": 1.197,
+    "annualized_return": 36.7,
+    "annualized_volatility": 26.78,
+    "sharpe_ratio": 1.221,
     "max_drawdown": -22.41,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
@@ -637,7 +637,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": 0.261
+        "rolling_sharpe_12m": 0.319
       }
     ],
     "capex_2025_B": 124.5,
@@ -649,10 +649,10 @@
     "symbol": "CRM",
     "category": "Legacy Tech",
     "ai_strategy": "AI features (Einstein)",
-    "annualized_return": 20.22,
-    "annualized_volatility": 36.3,
-    "sharpe_ratio": 0.447,
-    "max_drawdown": -42.62,
+    "annualized_return": 18.6,
+    "annualized_volatility": 36.44,
+    "sharpe_ratio": 0.401,
+    "max_drawdown": -45.01,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
     "end_date": "2026-03-01",
@@ -767,7 +767,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": -0.926
+        "rolling_sharpe_12m": -1.067
       }
     ]
   },
@@ -775,10 +775,10 @@
     "symbol": "ORCL",
     "category": "Legacy Tech",
     "ai_strategy": "Cloud/AI pivot",
-    "annualized_return": 29.55,
-    "annualized_volatility": 41.83,
-    "sharpe_ratio": 0.611,
-    "max_drawdown": -50.01,
+    "annualized_return": 31.48,
+    "annualized_volatility": 41.7,
+    "sharpe_ratio": 0.659,
+    "max_drawdown": -48.07,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
     "end_date": "2026-03-01",
@@ -893,7 +893,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": 0.213
+        "rolling_sharpe_12m": 0.297
       }
     ]
   },
@@ -901,10 +901,10 @@
     "symbol": "ADBE",
     "category": "Legacy Tech",
     "ai_strategy": "AI-disrupted (Firefly)",
-    "annualized_return": -5.11,
-    "annualized_volatility": 34.68,
-    "sharpe_ratio": -0.263,
-    "max_drawdown": -61.87,
+    "annualized_return": -4.26,
+    "annualized_volatility": 34.46,
+    "sharpe_ratio": -0.24,
+    "max_drawdown": -60.65,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
     "end_date": "2026-03-01",
@@ -1019,7 +1019,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": -1.785
+        "rolling_sharpe_12m": -1.718
       }
     ]
   },
@@ -1027,9 +1027,9 @@
     "symbol": "AAPL",
     "category": "Control",
     "ai_strategy": "Late mover (Apple Intelligence)",
-    "annualized_return": 25.29,
-    "annualized_volatility": 21.03,
-    "sharpe_ratio": 1.012,
+    "annualized_return": 26.01,
+    "annualized_volatility": 20.84,
+    "sharpe_ratio": 1.056,
     "max_drawdown": -19.71,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
@@ -1145,7 +1145,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": 0.472
+        "rolling_sharpe_12m": 0.582
       }
     ]
   },
@@ -1153,9 +1153,9 @@
     "symbol": "TSLA",
     "category": "Control",
     "ai_strategy": "Autonomous driving / robotics",
-    "annualized_return": 61.74,
-    "annualized_volatility": 57.71,
-    "sharpe_ratio": 1.001,
+    "annualized_return": 62.95,
+    "annualized_volatility": 57.53,
+    "sharpe_ratio": 1.025,
     "max_drawdown": -35.95,
     "months_analyzed": 39,
     "start_date": "2022-12-01",
@@ -1271,7 +1271,7 @@
       },
       {
         "date": "2026-03-01",
-        "rolling_sharpe_12m": 0.838
+        "rolling_sharpe_12m": 0.908
       }
     ]
   }

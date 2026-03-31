@@ -27,7 +27,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import pyarrow.parquet as pq
-from datetime import datetime
 from config import STOCKS, AI_CAPEX, RISK_FREE_RATE
 from utils import _s3_client
 from stock_pipeline.finance_utils import (
@@ -43,7 +42,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def get_dynamic_risk_free_rate(s3, bucket):
     """Load FEDFUNDS from S3 and return mean as decimal. Falls back to config RISK_FREE_RATE."""
     values = []
-    for year in range(2022, datetime.now().year + 1):
+    for year in range(2022, 2027):  # frozen at Q1 2026
         key = f"macro_indicators/series=FEDFUNDS/year={year}/data.parquet"
         try:
             obj = s3.get_object(Bucket=bucket, Key=key)
