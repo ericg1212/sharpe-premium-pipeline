@@ -9,7 +9,6 @@ import pytest  # noqa: E402
 import pandas as pd  # noqa: E402
 import numpy as np  # noqa: E402
 from unittest.mock import patch, MagicMock  # noqa: E402
-from datetime import datetime  # noqa: E402
 
 from stock_pipeline.historical_backtest import calculate_sharpe, get_dynamic_risk_free_rate  # noqa: E402
 from config import RISK_FREE_RATE  # noqa: E402
