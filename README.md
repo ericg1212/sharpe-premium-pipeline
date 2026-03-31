@@ -16,7 +16,7 @@ A data engineering portfolio proving a **+92.0% Sharpe ratio premium** for propr
 
 ## Key Finding: The Market Rewards AI Builders, Not AI Renters
 
-Analysis of risk-adjusted returns (Jan 2023 – present) across 10 major tech stocks reveals a clear **AI value chain hierarchy** in Sharpe ratios:
+Analysis of risk-adjusted returns (Jan 2023 – Q1 2026) across 10 major tech stocks reveals a clear **AI value chain hierarchy** in Sharpe ratios:
 
 | Tier | Companies | Avg Sharpe | AI Strategy |
 |------|-----------|-----------|-------------|
