@@ -28,7 +28,9 @@ Analysis of risk-adjusted returns (Jan 2023 – Q1 2026) across 10 major tech st
 
 **Builder Premium: +92.0%** — Companies building proprietary AI outperform those renting it through partnerships by 92% on risk-adjusted returns. Confirmed Q1 2026 — narrowed from the peak through a software sector correction, but direction held.
 
-Spearman rank correlation between AI% of capex and Sharpe ratio: **ρ = +0.800** — the premium holds stock by stock, not just in aggregate.
+Spearman rank correlation between AI% of capex and Sharpe ratio: **ρ = +0.800** (t ≈ 3.77, p ≈ 0.005) — statistically significant at the 0.01 level. This is a universe of every major AI builder and integrator at scale, not a sample — the premium holds stock by stock, not just in aggregate.
+
+Analysis frozen at Q1 2026 — confirmed through a software sector correction and elevated macro volatility.
 
 ### Macro Regime Analysis
 
