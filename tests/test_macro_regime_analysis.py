@@ -17,17 +17,14 @@ import pyarrow.parquet as pq
 from moto import mock_aws
 from unittest.mock import patch
 
-from stock_pipeline.macro_regime_analysis import (
+from stock_pipeline.macro_regime_analysis import (  # noqa: E402
     classify_regimes,
     compute_trailing_sharpe,
     aggregate_by_regime,
     load_fred_data,
     build_monthly_sharpe,
-    BUILDER_STOCKS,
-    INTEGRATOR_STOCKS,
     ALL_SYMBOLS,
 )
-from config import FRED_SERIES
 
 
 def _build_fred_df(n_months=24, gs10_start=3.0, gs10_end=6.0,
