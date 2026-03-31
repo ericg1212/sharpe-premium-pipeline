@@ -137,30 +137,29 @@ class TestCalculateSharpeExtended:
 
 
 # ---------------------------------------------------------------------------
-# TestRunBacktest (mocked S3 + Alpha Vantage)
+# TestRunBacktest (mocked S3 + yfinance)
 # ---------------------------------------------------------------------------
 
 class TestRunBacktest:
 
-    def _build_alpha_vantage_response(self, symbol, n_months=36):
-        """Build a minimal Alpha Vantage Monthly Adjusted response dict."""
-        start = datetime(2022, 12, 1)
-        series = {}
+    def _build_yfinance_df(self, n_months=36):
+        """Build a yfinance-compatible monthly price DataFrame."""
+        dates = pd.date_range(
+            start='2022-12-31', periods=n_months + 1, freq='ME',
+            tz='America/New_York',
+        )
         price = 100.0
-        for i in range(n_months + 1):
-            month = pd.Timestamp(start) + pd.DateOffset(months=i)
-            date_str = month.strftime('%Y-%m-%d')
+        prices = []
+        for _ in range(n_months + 1):
             price *= (1 + np.random.normal(0.02, 0.05))
-            series[date_str] = {
-                '5. adjusted close': str(round(price, 4)),
-                '1. open': str(round(price, 4)),
-            }
-        return {'Monthly Adjusted Time Series': series}
+            prices.append(price)
+        df = pd.DataFrame({'Close': prices}, index=dates)
+        df.index.name = 'Date'
+        return df
 
-    @patch('stock_pipeline.historical_backtest.sleep', return_value=None)
     @patch('stock_pipeline.historical_backtest._s3_client')
-    @patch('stock_pipeline.historical_backtest.requests.get')
-    def test_run_backtest_returns_dataframe(self, mock_get, mock_s3_client, mock_sleep):
+    @patch('stock_pipeline.historical_backtest.yf.Ticker')
+    def test_run_backtest_returns_dataframe(self, mock_ticker_class, mock_s3_client):
         from stock_pipeline.historical_backtest import run_backtest
 
         mock_s3 = MagicMock()
@@ -169,17 +168,14 @@ class TestRunBacktest:
 
         np.random.seed(42)
 
-        def fake_api(url, timeout=30):
-            symbol = url.split('symbol=')[1].split('&')[0]
-            resp = MagicMock()
-            resp.raise_for_status.return_value = None
-            resp.json.return_value = self._build_alpha_vantage_response(symbol)
-            return resp
+        def fake_ticker(symbol):
+            t = MagicMock()
+            t.history.return_value = self._build_yfinance_df()
+            return t
 
-        mock_get.side_effect = fake_api
+        mock_ticker_class.side_effect = fake_ticker
 
-        with patch.dict(os.environ, {'ALPHA_VANTAGE_API_KEY': 'testkey'}):  # pragma: allowlist secret
-            df = run_backtest()
+        df = run_backtest()
 
         assert df is not None
         assert len(df) == 10
@@ -187,10 +183,9 @@ class TestRunBacktest:
                          'sharpe_ratio', 'max_drawdown', 'months_analyzed'}
         assert required_cols.issubset(set(df.columns))
 
-    @patch('stock_pipeline.historical_backtest.sleep', return_value=None)
     @patch('stock_pipeline.historical_backtest._s3_client')
-    @patch('stock_pipeline.historical_backtest.requests.get')
-    def test_run_backtest_skips_failed_symbols(self, mock_get, mock_s3_client, mock_sleep):
+    @patch('stock_pipeline.historical_backtest.yf.Ticker')
+    def test_run_backtest_skips_failed_symbols(self, mock_ticker_class, mock_s3_client):
         from stock_pipeline.historical_backtest import run_backtest
 
         mock_s3 = MagicMock()
@@ -199,47 +194,40 @@ class TestRunBacktest:
 
         call_count = [0]
 
-        def fake_api_partial(url, timeout=30):
+        def fake_ticker_partial(symbol):
             call_count[0] += 1
-            symbol = url.split('symbol=')[1].split('&')[0]
-            resp = MagicMock()
-            resp.raise_for_status.return_value = None
+            t = MagicMock()
             if symbol in ('CRM', 'ORCL'):
-                resp.json.return_value = {}  # missing key → calculate_sharpe returns None
+                t.history.return_value = pd.DataFrame()  # empty → ValueError → skipped
             else:
                 np.random.seed(call_count[0])
-                resp.json.return_value = self._build_alpha_vantage_response(symbol)
-            return resp
+                t.history.return_value = self._build_yfinance_df()
+            return t
 
-        mock_get.side_effect = fake_api_partial
+        mock_ticker_class.side_effect = fake_ticker_partial
 
-        with patch.dict(os.environ, {'ALPHA_VANTAGE_API_KEY': 'testkey'}):  # pragma: allowlist secret
-            df = run_backtest()
+        df = run_backtest()
 
-        # CRM and ORCL return no monthly data key → ValueError raised → caught → skipped
         assert len(df) <= 10
         assert len(df) >= 1
 
-    @patch('stock_pipeline.historical_backtest.sleep', return_value=None)
     @patch('stock_pipeline.historical_backtest._s3_client')
-    @patch('stock_pipeline.historical_backtest.requests.get')
-    def test_run_backtest_raises_when_no_results(self, mock_get, mock_s3_client, mock_sleep):
+    @patch('stock_pipeline.historical_backtest.yf.Ticker')
+    def test_run_backtest_raises_when_no_results(self, mock_ticker_class, mock_s3_client):
         from stock_pipeline.historical_backtest import run_backtest
 
         mock_s3 = MagicMock()
         mock_s3.get_object.side_effect = Exception("NoSuchKey")
         mock_s3_client.return_value = (mock_s3, 'test-bucket')
 
-        mock_get.side_effect = Exception("API down")
+        mock_ticker_class.side_effect = Exception("yfinance down")
 
-        with patch.dict(os.environ, {'ALPHA_VANTAGE_API_KEY': 'testkey'}):  # pragma: allowlist secret
-            with pytest.raises(Exception, match="No backtest results"):
-                run_backtest()
+        with pytest.raises(Exception, match="No backtest results"):
+            run_backtest()
 
-    @patch('stock_pipeline.historical_backtest.sleep', return_value=None)
     @patch('stock_pipeline.historical_backtest._s3_client')
-    @patch('stock_pipeline.historical_backtest.requests.get')
-    def test_run_backtest_builder_premium_logged(self, mock_get, mock_s3_client, mock_sleep):
+    @patch('stock_pipeline.historical_backtest.yf.Ticker')
+    def test_run_backtest_builder_premium_logged(self, mock_ticker_class, mock_s3_client):
         """run_backtest should complete without error when builders and integrators both present."""
         from stock_pipeline.historical_backtest import run_backtest
 
@@ -247,22 +235,18 @@ class TestRunBacktest:
         mock_s3.get_object.side_effect = Exception("NoSuchKey")
         mock_s3_client.return_value = (mock_s3, 'test-bucket')
 
-        np.random.seed(7)
         call_count = [0]
 
-        def fake_api(url, timeout=30):
+        def fake_ticker(symbol):
             call_count[0] += 1
-            symbol = url.split('symbol=')[1].split('&')[0]
-            resp = MagicMock()
-            resp.raise_for_status.return_value = None
             np.random.seed(call_count[0])
-            resp.json.return_value = self._build_alpha_vantage_response(symbol)
-            return resp
+            t = MagicMock()
+            t.history.return_value = self._build_yfinance_df()
+            return t
 
-        mock_get.side_effect = fake_api
+        mock_ticker_class.side_effect = fake_ticker
 
-        with patch.dict(os.environ, {'ALPHA_VANTAGE_API_KEY': 'testkey'}):  # pragma: allowlist secret
-            df = run_backtest()
+        df = run_backtest()
 
         builders = df[df['category'] == 'AI Builder']
         integrators = df[df['category'] == 'AI Integrator']
