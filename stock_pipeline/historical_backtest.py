@@ -1,6 +1,6 @@
 """
 Historical Backtest: AI Value Chain Analysis
-Calculates Sharpe ratios for 10 tech stocks across 3 years (2023-2025)
+Calculates Sharpe ratios for 10 tech stocks across 3 years (Jan 2023–Q1 2026)
 and correlates risk-adjusted returns with AI spending strategy.
 
 Thesis: "The market rewards AI builders, not AI renters."
