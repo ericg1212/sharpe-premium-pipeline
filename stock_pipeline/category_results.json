@@ -1,37 +1,37 @@
 [
   {
     "category": "AI Builder",
-    "avg_return": 60.38,
-    "avg_volatility": 31.55,
-    "avg_sharpe": 1.772,
+    "avg_return": 63.075,
+    "avg_volatility": 31.335,
+    "avg_sharpe": 1.872,
     "stock_count": 2
   },
   {
     "category": "AI Integrator",
-    "avg_return": 27.32,
-    "avg_volatility": 24.56,
-    "avg_sharpe": 0.923,
+    "avg_return": 29.52,
+    "avg_volatility": 24.65,
+    "avg_sharpe": 0.995,
     "stock_count": 2
   },
   {
     "category": "Control",
-    "avg_return": 44.48,
-    "avg_volatility": 39.185,
-    "avg_sharpe": 1.04,
+    "avg_return": 41.82,
+    "avg_volatility": 38.855,
+    "avg_sharpe": 1.006,
     "stock_count": 2
   },
   {
     "category": "Infrastructure",
-    "avg_return": 132.71,
-    "avg_volatility": 44.23,
-    "avg_sharpe": 2.91,
+    "avg_return": 131.52,
+    "avg_volatility": 43.67,
+    "avg_sharpe": 2.92,
     "stock_count": 1
   },
   {
     "category": "Legacy Tech",
-    "avg_return": 15.273,
-    "avg_volatility": 37.533,
-    "avg_sharpe": 0.273,
+    "avg_return": 12.213,
+    "avg_volatility": 37.407,
+    "avg_sharpe": 0.192,
     "stock_count": 3
   }
 ]
