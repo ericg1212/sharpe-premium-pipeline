@@ -6,7 +6,7 @@ and correlates risk-adjusted returns with AI spending strategy.
 Thesis: "The market rewards AI builders, not AI renters."
 Companies building proprietary AI (Meta/Llama, Google/Gemini) outperform
 those integrating third-party AI (Microsoft/OpenAI, Amazon/Anthropic)
-by 50%+ on risk-adjusted returns despite spending less on capex.
+by 92%+ on risk-adjusted returns despite spending less on capex.
 
 Stock Categories:
   Infrastructure: NVDA (sells the GPUs)

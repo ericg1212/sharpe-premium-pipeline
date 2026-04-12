@@ -12,7 +12,7 @@
 ![Tests](https://img.shields.io/badge/Tests-184-brightgreen?style=flat-square)
 ![Stocks](https://img.shields.io/badge/Stocks%20Analyzed-10-blue?style=flat-square)
 
-A data engineering portfolio proving a **+92.0% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 184 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
+A data engineering portfolio quantifying a **+92.0% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 184 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
 
 ## Key Finding: The Market Rewards AI Builders, Not AI Renters
 
@@ -36,7 +36,7 @@ Analysis frozen at Q1 2026 — confirmed through a software sector correction an
 
 Each month (Jan 2023 – Q1 2026) is classified into a combined macro regime using FRED data: rate regime (GS10 vs. 12-month rolling mean), inflation regime (CPI YoY vs. 4% threshold), and unemployment regime (UNRATE vs. 5.5%). The trailing 12-month Sharpe premium for AI Builders vs. Integrators is then computed per regime.
 
-**Finding:** The builder premium is strongest in falling-rate / normal-inflation environments (+0.50 Sharpe units, 12 months) and remains positive in rising-rate / normal-inflation environments (+0.45, 21 months) — the two most common regimes covering 33 of 73 months. The premium turns negative only in rising-rate / high-inflation regimes (-0.48, 23 months), which corresponds to the 2022–2023 tightening cycle before the analysis window fully opens. The advantage is macro-sensitive but directionally consistent: when monetary conditions normalize, builders outperform.
+**Finding:** The builder premium is strongest in falling-rate / normal-inflation environments (+0.50 Sharpe units, 12 months) and remains positive in rising-rate / normal-inflation environments (+0.45, 21 months) — the two most common regimes covering 33 of 62 months. The premium turns negative only in rising-rate / high-inflation regimes (-0.48, 23 months), reflecting the tail of the 2022–2023 Fed tightening cycle — whose effects persist in the trailing 12-month window as rates peaked in early 2023. The advantage is macro-sensitive but directionally consistent: when monetary conditions normalize, builders outperform.
 
 | Regime | Avg Builder Premium | Months |
 |--------|-------------------|--------|
@@ -45,6 +45,8 @@ Each month (Jan 2023 – Q1 2026) is classified into a combined macro regime usi
 | Rising rates, high inflation, elevated unemployment | +0.175 | 3 |
 | Rising rates, normal inflation, elevated unemployment | -0.370 | 3 |
 | Rising rates, high inflation, normal unemployment | -0.481 | 23 |
+
+The negative premium in rising-rate / high-inflation regimes (23 months) reflects the 2022–early 2023 Fed tightening cycle captured in the trailing 12-month rolling window — broad growth multiple compression, not an AI-specific signal. As monetary conditions normalized, the premium re-established. The **+92.0% overall result is a through-the-cycle figure**: calculated across Jan 2023 – Q1 2026, it captures both the compression period and the recovery.
 
 
 ![Dashboard](dashboard.png)
