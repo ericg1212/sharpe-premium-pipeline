@@ -12,9 +12,9 @@
 ![Tests](https://img.shields.io/badge/Tests-184-brightgreen?style=flat-square)
 ![Stocks](https://img.shields.io/badge/Stocks%20Analyzed-10-blue?style=flat-square)
 
-A data engineering portfolio quantifying a **+92.0% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800). Four production Airflow pipelines (Docker, CeleryExecutor) ingest data from Alpha Vantage, SEC EDGAR, and FRED — storing in a Hive-partitioned S3 data lake as Parquet/Snappy, querying with Athena, and visualizing findings in Power BI. Validated by 184 pytest unit tests with moto AWS mocking. Infrastructure codified end-to-end in Terraform.
+$650B in AI spend forecast for 2026 across Big Tech. The companies spending the most aren't earning the most — the premium flows to builders. This pipeline quantifies that relationship: a **+92.0% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800, p ≈ 0.005), derived from four production Airflow pipelines ingesting market prices, SEC 10-K filings, and FRED macro indicators.
 
-## Key Finding: The Market Rewards AI Builders, Not AI Renters
+## Builders Outperform Renters by 92%
 
 Analysis of risk-adjusted returns (Jan 2023 – Q1 2026) across 10 major tech stocks reveals a clear **AI value chain hierarchy** in Sharpe ratios:
 
@@ -32,7 +32,7 @@ Spearman rank correlation between AI% of capex and Sharpe ratio: **ρ = +0.800**
 
 Analysis frozen at Q1 2026 — confirmed through a software sector correction and elevated macro volatility.
 
-### Macro Regime Analysis
+### Does the Premium Hold Through Rate Cycles?
 
 Each month (Jan 2023 – Q1 2026) is classified into a combined macro regime using FRED data: rate regime (GS10 vs. 12-month rolling mean), inflation regime (CPI YoY vs. 4% threshold), and unemployment regime (UNRATE vs. 5.5%). The trailing 12-month Sharpe premium for AI Builders vs. Integrators is then computed per regime.
 
@@ -48,10 +48,22 @@ Each month (Jan 2023 – Q1 2026) is classified into a combined macro regime usi
 
 The negative premium in rising-rate / high-inflation regimes (23 months) reflects the 2022–early 2023 Fed tightening cycle captured in the trailing 12-month rolling window — broad growth multiple compression, not an AI-specific signal. As monetary conditions normalized, the premium re-established. The **+92.0% overall result is a through-the-cycle figure**: calculated across Jan 2023 – Q1 2026, it captures both the compression period and the recovery.
 
-
 ![Dashboard](dashboard.png)
 
-In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more doesn't mean earning more — Meta spends the least of the four hybrids ($125B) yet delivers the highest Sharpe ratio (1.902) because nearly 100% of its capex goes to proprietary AI. Amazon spends the most ($200B) but dilutes returns across logistics and third-party partnerships.
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Orchestration | Apache Airflow 2.10.4 (CeleryExecutor) |
+| Infrastructure | Docker Compose (6 containers, PostgreSQL 16) |
+| Storage | AWS S3 (Parquet/Snappy, Hive-style partitions) |
+| Query Engine | AWS Athena (Presto SQL) |
+| Visualization | Power BI |
+| IaC | Terraform |
+| CI/CD | GitHub Actions (lint, pytest, CodeQL, Scorecard, SBOM, dependency review) |
+| Language | Python 3.12 |
+| Key Libraries | boto3, pandas, numpy, pyarrow, requests |
+| Testing | pytest + moto (184 tests, AWS mocked at HTTP layer) |
 
 ## Architecture
 
@@ -71,30 +83,30 @@ In 2026, Big Tech will spend ~$650B on AI infrastructure. But spending more does
 ## Pipelines
 
 ### Stock Pipeline (`stock_pipeline/stock_pipeline.py`)
+Daily prices for the 10-stock universe — the raw input for Sharpe ratio calculation across every tier of the AI value chain.
 - **Stocks:** NVDA, MSFT, GOOGL, AMZN, META, CRM, ORCL, ADBE, AAPL, TSLA
 - **Source:** Alpha Vantage API (Global Quote)
 - **Schedule:** 5 PM ET Mon-Fri (after market close)
 - **S3 path:** `stocks/date={date}/{timestamp}.parquet`
 
 ### SEC EDGAR Pipeline (`edgar_pipeline/edgar_pipeline.py`)
+Authoritative capex from 10-K filings — what companies actually reported to regulators, not what they told analysts. The basis for capex efficiency calculations and the AI% of spend metric that drives the Spearman correlation.
 - **Source:** SEC EDGAR Company Facts API (free, no auth beyond User-Agent header)
 - **Data:** Annual capex + revenue from 10-K filings for META, GOOGL, MSFT, AMZN
 - **Schedule:** Quarterly (Jan/Apr/Jul/Oct 1) — picks up each company's 10-K within 3 months
 - **S3 path:** `fundamentals/cik={cik}/year={year}/data.parquet`
 - Rate-limit aware: 1-second sleep between company fetches (SEC 10 req/sec limit)
-- Replaces hardcoded capex figures with authoritative SEC filings
 
 ### FRED Macro Pipeline (`fred_pipeline/fred_pipeline.py`)
+Macro regime classification — rates, inflation, and unemployment from the St. Louis Fed to answer whether the builder premium holds across monetary cycles, not just in calm conditions.
 - **Source:** St. Louis Fed FRED API (free, API key required)
 - **Series:** GS10 (10-yr Treasury), CPIAUCSL (CPI), UNRATE (unemployment), FEDFUNDS (fed funds rate)
 - **Schedule:** 1st of every month (FRED releases with ~2-week lag)
 - **S3 path:** `macro_indicators/series={series_id}/year={year}/data.parquet`
-- Enables macro regime analysis: does the AI premium hold across rate cycles?
 
 ### Analysis Pipeline (`analysis_pipeline/analysis_pipeline.py`)
-- Runs Sharpe backtest + portfolio analysis automatically after daily stock load
+Closes the loop — recomputes the builder premium automatically after each market close so the finding stays current without manual runs.
 - **Schedule:** 5:30 PM Mon-Fri (30 min after stock pipeline)
-- Replaces the manual `make analyze` command
 
 ### Monitor (`monitoring/pipeline_monitor.py`)
 Schedule-aware health checks across all pipelines — staleness thresholds vary by source cadence (daily/monthly/quarterly), with succeeded/failed symbol lists for targeted backfill.
@@ -121,21 +133,6 @@ terraform init
 terraform validate   # Verify configuration
 terraform plan       # Preview resources (no changes applied)
 ```
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Orchestration | Apache Airflow 2.10.4 (CeleryExecutor) |
-| Infrastructure | Docker Compose (6 containers, PostgreSQL 16) |
-| Storage | AWS S3 (Parquet/Snappy, Hive-style partitions) |
-| Query Engine | AWS Athena (Presto SQL) |
-| Visualization | Power BI |
-| IaC | Terraform |
-| CI/CD | GitHub Actions (lint, pytest, CodeQL, Scorecard, SBOM, dependency review) |
-| Language | Python 3.12 |
-| Key Libraries | boto3, pandas, numpy, pyarrow, requests |
-| Testing | pytest + moto (184 tests, AWS mocked at HTTP layer) |
 
 ## Testing
 
@@ -255,8 +252,8 @@ data-engineering-portfolio/
 ### Quick Start
 ```bash
 # 1. Clone the repo
-git clone https://github.com/ericg1212/data-engineering-portfolio.git
-cd data-engineering-portfolio
+git clone https://github.com/ericg1212/sharpe-premium-pipeline.git
+cd sharpe-premium-pipeline
 
 # 2. Create .env file with your credentials
 cp .env.example .env
