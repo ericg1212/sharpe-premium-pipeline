@@ -61,6 +61,7 @@ jobs:
         # GHSA-w7rc-q6cm-f5gm + GHSA-p3v3-229h-mc63: Airflow 3.x-only fixes, tolerable_risk
         # in single-user local dev — dismissed in Dependabot alerts #10 and #11
         # PYSEC-2026-113: pyarrow, no fix available; PYSEC-2025-183: pyjwt, no fix available
+        # PYSEC-2026-172 + PYSEC-2026-173: Airflow 3.x-only fixes, same tolerable_risk pattern
         run: |
           pip-audit -r requirements.txt \
             --ignore-vuln GHSA-w7rc-q6cm-f5gm \
@@ -80,7 +81,9 @@ jobs:
             --ignore-vuln PYSEC-2024-266 \
             --ignore-vuln PYSEC-2024-265 \
             --ignore-vuln PYSEC-2026-18 \
-            --ignore-vuln PYSEC-2024-264
+            --ignore-vuln PYSEC-2024-264 \
+            --ignore-vuln PYSEC-2026-172 \
+            --ignore-vuln PYSEC-2026-173
 
       - name: Terraform IaC security scan (checkov)
         run: checkov -d terraform/ --framework terraform --quiet --compact
