@@ -77,17 +77,13 @@ The negative premium in rising-rate / high-inflation regimes (23 months) reflect
 
 ## Architecture
 
-```
-┌──────────────────┐     ┌──────────────┐     ┌───────────┐     ┌─────────┐
-│   Data Sources    │────>│Apache Airflow│────>│  AWS S3   │────>│ Athena  │
-│                   │     │  (Docker)    │     │(Data Lake)│     │ (Query) │
-│ Alpha Vantage     │     │              │     │           │     └────┬────┘
-│ SEC EDGAR         │     │ 4 production │     │Partitioned│          │
-│ FRED (St. Louis   │     │ DAGs +       │     │by symbol/ │     ┌────▼────┐
-│   Fed)            │     │ analysis     │     │date/series│     │Power BI │
-│                   │     │ pipeline     │     │           │     │(Dashboard)│
-│                   │     └──────────────┘     └───────────┘     └─────────┘
-└──────────────────┘
+```mermaid
+flowchart LR
+    A["Data Sources\nAlpha Vantage · SEC EDGAR\nFRED · Yahoo Finance"] --> B["Apache Airflow\nDocker · 4 production DAGs"]
+    B --> C[("AWS S3\nHive-partitioned\nsymbol / date / series\nParquet + Snappy")]
+    C --> D["AWS Glue\nCatalog + crawler"]
+    D --> E["AWS Athena\nServerless SQL"]
+    E --> F["Power BI\nSharpe premium dashboard"]
 ```
 
 ## Pipelines
