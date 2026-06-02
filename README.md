@@ -1,6 +1,8 @@
 # Own the Model, Own the Returns
 
 [![CI](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/codeql.yml/badge.svg)](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/ericg1212/sharpe-premium-pipeline?style=flat-square)](https://github.com/ericg1212/sharpe-premium-pipeline/releases)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-017CEE?style=flat-square&logo=apacheairflow&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat-square&logo=amazonaws&logoColor=white)
