@@ -22,18 +22,6 @@
 
 ---
 
-## Portfolio Arc
-
-This is the first pipeline in a three-part healthcare + finance data engineering series.
-
-| Pipeline | Focus | Status |
-|---|---|---|
-| **[Own the Model *(this project)*](https://github.com/ericg1212/sharpe-premium-pipeline)** | Financial signal extraction — quantify the AI builder premium across the value chain | Live |
-| [Denied](https://github.com/ericg1212/healthcare-claims-pipeline) | Retrospective denial classification — separate systematic denials from documentation failures | Live |
-| [Trust but Verify](https://github.com/ericg1212/ai-healthcare-pipeline) | Clinical AI governance — LLM enrichment + rules engine cross-validation, every routing decision explainable | Live |
-
----
-
 $650B in AI spend forecast for 2026 across Big Tech. The companies spending the most aren't earning the most — the premium flows to builders. This pipeline quantifies that relationship: a **+92.0% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800, p ≈ 0.005), derived from four production Airflow pipelines ingesting market prices, SEC 10-K filings, and FRED macro indicators.
 
 ## Builders Outperform Renters by 92%
