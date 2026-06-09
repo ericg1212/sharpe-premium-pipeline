@@ -22,6 +22,18 @@
 
 ---
 
+## Portfolio Arc
+
+This is the first pipeline in a three-part healthcare + finance data engineering series.
+
+| Pipeline | Focus | Status |
+|---|---|---|
+| **[Own the Model *(this project)*](https://github.com/ericg1212/sharpe-premium-pipeline)** | Financial signal extraction — quantify the AI builder premium across the value chain | Live |
+| [Denied](https://github.com/ericg1212/healthcare-claims-pipeline) | Retrospective denial classification — separate systematic denials from documentation failures | Live |
+| [Trust but Verify](https://github.com/ericg1212/ai-healthcare-pipeline) | Clinical AI governance — LLM enrichment + rules engine cross-validation, every routing decision explainable | Live |
+
+---
+
 $650B in AI spend forecast for 2026 across Big Tech. The companies spending the most aren't earning the most — the premium flows to builders. This pipeline quantifies that relationship: a **+92.0% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800, p ≈ 0.005), derived from four production Airflow pipelines ingesting market prices, SEC 10-K filings, and FRED macro indicators.
 
 ## Builders Outperform Renters by 92%
@@ -44,21 +56,30 @@ Analysis frozen at Q1 2026 — confirmed through a software sector correction an
 
 ### Does the Premium Hold Through Rate Cycles?
 
-Each month (Jan 2023 – Q1 2026) is classified into a combined macro regime using FRED data: rate regime (GS10 vs. 12-month rolling mean), inflation regime (CPI YoY vs. 4% threshold), and unemployment regime (UNRATE vs. 5.5%). The trailing 12-month Sharpe premium for AI Builders vs. Integrators is then computed per regime.
-
-**Finding:** The builder premium is strongest in falling-rate / normal-inflation environments (+0.50 Sharpe units, 12 months) and remains positive in rising-rate / normal-inflation environments (+0.45, 21 months) — the two most common regimes covering 33 of 62 months. The premium turns negative only in rising-rate / high-inflation regimes (-0.48, 23 months), reflecting the tail of the 2022–2023 Fed tightening cycle — whose effects persist in the trailing 12-month window as rates peaked in early 2023. The advantage is macro-sensitive but directionally consistent: when monetary conditions normalize, builders outperform.
+Each month classified by FRED regime (GS10 vs. rolling mean, CPI YoY vs. 4%, UNRATE vs. 5.5%). Premium is positive in 36 of 62 months — strongest when monetary conditions normalize.
 
 | Regime | Avg Builder Premium | Months |
 |--------|-------------------|--------|
-| Falling rates, normal inflation, normal unemployment | +0.502 | 12 |
-| Rising rates, normal inflation, normal unemployment | +0.454 | 21 |
+| Falling rates, normal inflation | +0.502 | 12 |
+| Rising rates, normal inflation | +0.454 | 21 |
 | Rising rates, high inflation, elevated unemployment | +0.175 | 3 |
 | Rising rates, normal inflation, elevated unemployment | -0.370 | 3 |
-| Rising rates, high inflation, normal unemployment | -0.481 | 23 |
+| Rising rates, high inflation | -0.481 | 23 |
 
-The negative premium in rising-rate / high-inflation regimes (23 months) reflects the 2022–early 2023 Fed tightening cycle captured in the trailing 12-month rolling window — broad growth multiple compression, not an AI-specific signal. As monetary conditions normalized, the premium re-established. The **+92.0% overall result is a through-the-cycle figure**: calculated across Jan 2023 – Q1 2026, it captures both the compression period and the recovery.
+The negative regimes (23 months) reflect the 2022–2023 Fed tightening cycle — broad growth multiple compression, not an AI-specific signal. The **+92.0% is a through-the-cycle figure** across both compression and recovery.
 
 ![Dashboard](dashboard.png)
+
+## Design Decisions
+
+| Decision | Why |
+|---|---|
+| **Parquet + Snappy on S3** | Columnar format for Athena pushdown; Snappy balances compression ratio and query speed for time-series financial data |
+| **Hive-style S3 partitions** | `symbol/date/series` partitioning lets Athena prune entire partitions — avoids full-bucket scans on daily queries |
+| **Spearman over Pearson** | Sharpe ratios and capex percentages aren't normally distributed. Spearman rank correlation is the right test for monotonic relationships on financial data |
+| **SEC EDGAR over earnings calls** | 10-K capex figures are audited and filed with regulators — not what companies told analysts. Authoritative source for the AI% of spend metric |
+| **moto for AWS mocks** | Mocks at the HTTP layer, not the SDK layer — tests exercise the same code path that runs in production; no real AWS calls in CI |
+| **CeleryExecutor** | Parallel DAG execution across the 4 pipelines; LocalExecutor would serialize them on the same worker |
 
 ## Tech Stack
 
@@ -168,23 +189,11 @@ make lint               # flake8 across all source dirs
 
 ## Security
 
-All credentials managed via environment variables — zero hardcoded secrets:
-- AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-- API keys (`ALPHA_VANTAGE_API_KEY`, `FRED_API_KEY`)
-- Injected into Airflow containers via Docker Compose `.env` file
-- Hardened `.gitignore` blocks keys, certs, and credential files from being committed
-
-CI/CD security pipeline on every push:
-- **bandit** — Python static analysis for security issues
-- **pip-audit** — dependency vulnerability scanning
-- **checkov** — Terraform IaC security scanning
-
-Repo hardening:
-- Branch protection: CI required, no force push, no direct commits to main, linear history
-- Secret scanning + push protection enabled (blocks commits containing credentials)
-- Dependabot security updates enabled
-- Pre-commit hooks: trailing whitespace, private key detection, secret scanning
-- `SECURITY.md` with vulnerability disclosure policy
+| Layer | Controls |
+|---|---|
+| Credentials | Environment variables only — AWS keys + API keys injected via Docker Compose `.env`, never hardcoded |
+| CI/CD | bandit (static analysis) · pip-audit (CVE scan) · checkov (Terraform IaC scan) on every push |
+| Repo | Branch protection · secret scanning + push protection · Dependabot · pre-commit hooks · `SECURITY.md` |
 
 ## Project Structure
 
