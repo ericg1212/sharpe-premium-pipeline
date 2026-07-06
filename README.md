@@ -18,7 +18,7 @@
 ![Tests](https://img.shields.io/badge/Tests-184-brightgreen?style=flat-square)
 ![Stocks](https://img.shields.io/badge/Universe-10%20Stocks-blue?style=flat-square)
 
-**By [Eric Grynspan](https://www.linkedin.com/in/ericgrynspan/)** &nbsp;·&nbsp; [Portfolio](https://ericg1212.github.io)
+**By [Eric Grynspan](https://www.linkedin.com/in/ericgrynspan/)** &nbsp;·&nbsp; [ericg1212.github.io](https://ericg1212.github.io)
 
 ---
 
