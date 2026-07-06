@@ -86,14 +86,7 @@ The negative regimes (23 months) reflect the 2022–2023 Fed tightening cycle �
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A["Data Sources\nAlpha Vantage · SEC EDGAR\nFRED · Yahoo Finance"] --> B["Apache Airflow\nDocker · 4 production DAGs"]
-    B --> C[("AWS S3\nHive-partitioned\nsymbol / date / series\nParquet + Snappy")]
-    C --> D["AWS Glue\nCatalog + crawler"]
-    D --> E["AWS Athena\nServerless SQL"]
-    E --> F["Power BI\nSharpe premium dashboard"]
-```
+```mermaid<br/>flowchart LR<br/>    A["Data Sources\nAlpha Vantage · SEC EDGAR\nFRED · Yahoo Finance"] --> B["Apache Airflow\nDocker · 4 production DAGs"]<br/>    B --> C[("AWS S3\nHive-partitioned\nsymbol / date / series\nParquet + Snappy")]<br/>    C --> D["AWS Glue\nCatalog + crawler"]<br/>    D --> E["AWS Athena\nServerless SQL"]<br/>    E --> F["Power BI\nSharpe premium dashboard"]<br/>```
 
 ## Pipelines
 
