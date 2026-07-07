@@ -119,6 +119,7 @@ Pulls 3 years of monthly adjusted close prices and calculates:
 | **SEC EDGAR over earnings calls** | 10-K capex figures are audited and filed with regulators — not what companies told analysts. Authoritative source for the AI% of spend metric |
 | **moto for AWS mocks** | Mocks at the HTTP layer, not the SDK layer — tests exercise the same code path that runs in production; no real AWS calls in CI |
 | **CeleryExecutor** | Parallel DAG execution across the 4 pipelines; LocalExecutor would serialize them on the same worker |
+| **Airflow 2.x pinned** | 3.x is a breaking provider-line rewrite, not a version bump. Advisories with 3.x-only fixes are triaged individually in CI (pip-audit ignore list, each documented) — the right call for a single-user local deployment; revisit at the next major platform change |
 
 ## Tech Stack
 
