@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/codeql.yml/badge.svg)](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/codeql.yml)
-[![codecov](https://codecov.io/gh/ericg1212/sharpe-premium-pipeline/branch/main/graph/badge.svg)](https://codecov.io/gh/ericg1212/sharpe-premium-pipeline)
 [![Release](https://img.shields.io/github/v/release/ericg1212/sharpe-premium-pipeline?style=flat-square)](https://github.com/ericg1212/sharpe-premium-pipeline/releases)
 ![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-017CEE?style=flat-square&logo=apacheairflow&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)

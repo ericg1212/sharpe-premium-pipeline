@@ -40,7 +40,6 @@ jobs:
             "pyarrow>=17.0.0,<20.0.0" \
             "requests>=2.31.0,<3.0.0" \
             "pytest>=7.4.0,<9.0.0" \
-            "pytest-cov>=4.0.0,<8.0.0" \
             "moto[s3,athena]>=5.0.0,<6.0.0" \
             "responses>=0.25.0,<1.0.0" \
             "yfinance>=0.2.0,<1.0.0" \
@@ -100,13 +99,4 @@ jobs:
         run: terraform fmt -check terraform/
 
       - name: Run tests
-        run: |
-          pytest tests/ -v \
-            --cov=stock_pipeline --cov=edgar_pipeline --cov=fred_pipeline \
-            --cov=analysis_pipeline --cov=monitoring --cov=utils --cov=config \
-            --cov-report=xml
-
-      - uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457  # v3
-        with:
-          file: coverage.xml
-          fail_ci_if_error: false
+        run: pytest tests/ -v
