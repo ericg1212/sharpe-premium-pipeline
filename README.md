@@ -2,14 +2,14 @@
 
 [![CI](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/codeql.yml/badge.svg)](https://github.com/ericg1212/sharpe-premium-pipeline/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/ericg1212/sharpe-premium-pipeline/branch/main/graph/badge.svg)](https://codecov.io/gh/ericg1212/sharpe-premium-pipeline)
 [![Release](https://img.shields.io/github/v/release/ericg1212/sharpe-premium-pipeline?style=flat-square)](https://github.com/ericg1212/sharpe-premium-pipeline/releases)
-![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-017CEE?style=flat-square&logo=apacheairflow&logoColor=white)
-![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat-square)
-![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat-square&logo=terraform&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat-square)
 ![Power BI](https://img.shields.io/badge/Power%20BI-F2C811?style=flat-square)
-![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat-square&logo=terraform&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
 
 ![Builder Premium](https://img.shields.io/badge/Builder%20Premium-%2B92.0%25-22c55e?style=flat-square)
 ![Spearman](https://img.shields.io/badge/Spearman%20%CF%81-%2B0.800-0ea5e9?style=flat-square)
@@ -57,32 +57,6 @@ Each month classified by FRED regime (GS10 vs. rolling mean, CPI YoY vs. 4%, UNR
 The negative regimes (23 months) reflect the 2022–2023 Fed tightening cycle — broad growth multiple compression, not an AI-specific signal. The **+92.0% is a through-the-cycle figure** across both compression and recovery.
 
 ![Dashboard](dashboard.png)
-
-## Design Decisions
-
-| Decision | Why |
-|---|---|
-| **Parquet + Snappy on S3** | Columnar format for Athena pushdown; Snappy balances compression ratio and query speed for time-series financial data |
-| **Hive-style S3 partitions** | `symbol/date/series` partitioning lets Athena prune entire partitions — avoids full-bucket scans on daily queries |
-| **Spearman over Pearson** | Sharpe ratios and capex percentages aren't normally distributed. Spearman rank correlation is the right test for monotonic relationships on financial data |
-| **SEC EDGAR over earnings calls** | 10-K capex figures are audited and filed with regulators — not what companies told analysts. Authoritative source for the AI% of spend metric |
-| **moto for AWS mocks** | Mocks at the HTTP layer, not the SDK layer — tests exercise the same code path that runs in production; no real AWS calls in CI |
-| **CeleryExecutor** | Parallel DAG execution across the 4 pipelines; LocalExecutor would serialize them on the same worker |
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Orchestration | Apache Airflow 2.10.4 (CeleryExecutor) |
-| Infrastructure | Docker Compose (6 containers, PostgreSQL 16) |
-| Storage | AWS S3 (Parquet/Snappy, Hive-style partitions) |
-| Query Engine | AWS Athena (Presto SQL) |
-| Visualization | Power BI |
-| IaC | Terraform |
-| CI/CD | GitHub Actions (lint, bandit, pip-audit, pytest, checkov) |
-| Language | Python 3.12 |
-| Key Libraries | boto3, pandas, numpy, pyarrow, requests |
-| Testing | pytest + moto (184 tests, AWS mocked at HTTP layer) |
 
 ## Architecture
 
@@ -134,6 +108,42 @@ Pulls 3 years of monthly adjusted close prices and calculates:
 - Build vs. Rent premium (proprietary AI vs. partnership AI)
 - Capex efficiency (Sharpe per $B of AI spend, from SEC EDGAR + earnings guidance)
 - Spearman rank correlation between AI% of capex and Sharpe ratio
+
+## Design Decisions
+
+| Decision | Why |
+|---|---|
+| **Parquet + Snappy on S3** | Columnar format for Athena pushdown; Snappy balances compression ratio and query speed for time-series financial data |
+| **Hive-style S3 partitions** | `symbol/date/series` partitioning lets Athena prune entire partitions — avoids full-bucket scans on daily queries |
+| **Spearman over Pearson** | Sharpe ratios and capex percentages aren't normally distributed. Spearman rank correlation is the right test for monotonic relationships on financial data |
+| **SEC EDGAR over earnings calls** | 10-K capex figures are audited and filed with regulators — not what companies told analysts. Authoritative source for the AI% of spend metric |
+| **moto for AWS mocks** | Mocks at the HTTP layer, not the SDK layer — tests exercise the same code path that runs in production; no real AWS calls in CI |
+| **CeleryExecutor** | Parallel DAG execution across the 4 pipelines; LocalExecutor would serialize them on the same worker |
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Orchestration | Apache Airflow 2.10.4 (CeleryExecutor) |
+| Infrastructure | Docker Compose (6 containers, PostgreSQL 16) |
+| Storage | AWS S3 (Parquet/Snappy, Hive-style partitions) |
+| Query Engine | AWS Athena (Presto SQL) |
+| Visualization | Power BI |
+| IaC | Terraform |
+| CI/CD | GitHub Actions (lint, bandit, pip-audit, pytest, checkov) |
+| Language | Python 3.12 |
+| Key Libraries | boto3, pandas, numpy, pyarrow, requests |
+| Testing | pytest + moto (184 tests, AWS mocked at HTTP layer) |
+
+## Data Sources
+
+| Source | API | Data | Rate Limit |
+|--------|-----|------|-----------|
+| [Alpha Vantage](https://www.alphavantage.co/) | Stock quotes + monthly history | Daily prices | 25 calls/day (free) |
+| [SEC EDGAR](https://www.sec.gov/developer) | Company Facts API | Annual 10-K filings | No limit (free) |
+| [FRED](https://fred.stlouisfed.org/docs/api/fred/) | Observations API | Macro indicators | No limit (free, key required) |
+
+---
 
 ## Infrastructure as Code
 
@@ -274,16 +284,6 @@ make demo     # Run full analysis in local mode (no AWS required)
 make logs     # Tail scheduler + worker logs
 make clean    # Remove __pycache__, logs, stopped containers
 ```
-
-## Data Sources
-
-| Source | API | Data | Rate Limit |
-|--------|-----|------|-----------|
-| [Alpha Vantage](https://www.alphavantage.co/) | Stock quotes + monthly history | Daily prices | 25 calls/day (free) |
-| [SEC EDGAR](https://www.sec.gov/developer) | Company Facts API | Annual 10-K filings | No limit (free) |
-| [FRED](https://fred.stlouisfed.org/docs/api/fred/) | Observations API | Macro indicators | No limit (free, key required) |
-
----
 
 ## Author
 
