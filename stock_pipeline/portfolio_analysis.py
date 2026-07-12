@@ -20,10 +20,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
+def default_exports_dir():
+    """Resolve the data/exports output directory (Docker mount or repo-local)."""
+    base = '/opt/airflow/data' if os.path.isdir('/opt/airflow/data') \
+        else os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data'))
+    path = os.path.join(base, 'exports')
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
 def load_results():
-    base = '/opt/airflow/stock_pipeline' if os.path.isdir('/opt/airflow/stock_pipeline') \
-        else os.path.dirname(os.path.abspath(__file__))
-    results_path = os.path.join(base, 'backtest_results.json')
+    results_path = os.path.join(default_exports_dir(), 'backtest_results.json')
     with open(results_path) as f:
         return json.load(f)
 
@@ -205,10 +212,11 @@ def value_chain_summary(results):
     return summary_rows
 
 
-def save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows):
+def save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows,
+                  output_dir=None):
     """Save analysis as CSV files for Power BI."""
-    output_dir = '/opt/airflow/stock_pipeline' if os.path.isdir('/opt/airflow/stock_pipeline') \
-        else os.path.dirname(os.path.abspath(__file__))
+    if output_dir is None:
+        output_dir = default_exports_dir()
 
     rank_map = {'Infrastructure': 1, 'AI Builder': 2, 'AI Integrator': 3, 'Control': 4, 'Legacy Tech': 5}
     bor_map = {'AI Builder': 'Build', 'AI Integrator': 'Rent'}
@@ -319,7 +327,7 @@ def main():
 
 def run_local():
     """Local demo mode: read from backtest_results.json and print findings without AWS."""
-    results_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backtest_results.json')
+    results_path = os.path.join(default_exports_dir(), 'backtest_results.json')
 
     if not os.path.exists(results_path):
         print(f"ERROR: {results_path} not found.")

@@ -255,9 +255,11 @@ def run_backtest():
     logger.info("=" * 70)
 
     # === SAVE RESULTS ===
-    # Use writable Docker mount if available, otherwise script directory (local runs)
-    output_dir = '/opt/airflow/stock_pipeline' if os.path.isdir('/opt/airflow/stock_pipeline') \
-        else os.path.dirname(os.path.abspath(__file__))
+    # Use writable Docker mount if available, otherwise repo-root data/exports (local runs)
+    base = '/opt/airflow/data' if os.path.isdir('/opt/airflow/data') \
+        else os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data'))
+    output_dir = os.path.join(base, 'exports')
+    os.makedirs(output_dir, exist_ok=True)
 
     stock_output = os.path.join(output_dir, 'backtest_results.json')
     with open(stock_output, 'w') as f:
@@ -275,7 +277,8 @@ def run_backtest():
 
 def run_local():
     """Local demo mode: load from backtest_results.csv and print findings without AWS."""
-    output_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'exports'))
     csv_path = os.path.join(output_dir, 'backtest_results.csv')
 
     if not os.path.exists(csv_path):

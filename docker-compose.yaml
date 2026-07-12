@@ -91,7 +91,8 @@ x-airflow-common:
     # Mount repo root read-only: PYTHONPATH and DAGS_FOLDER both point here so all
     # pipeline modules are importable and all DAG files are discovered without any copy step.
     - ${AIRFLOW_PROJ_DIR:-.}:/opt/airflow/repo:ro
-    - ${AIRFLOW_PROJ_DIR:-.}/stock_pipeline:/opt/airflow/stock_pipeline
+    # Writable mount for generated analysis outputs (data/exports/)
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
