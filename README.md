@@ -120,20 +120,20 @@ Pulls 3 years of monthly adjusted close prices and calculates:
 | **CeleryExecutor** | Parallel DAG execution across the 4 pipelines; LocalExecutor would serialize them on the same worker |
 | **Airflow 2.x pinned** | 3.x is a breaking provider-line rewrite, not a version bump. Advisories with 3.x-only fixes are triaged individually in CI (pip-audit ignore list, each documented) — the right call for a single-user local deployment; revisit at the next major platform change |
 
-## Tech Stack
+## Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Orchestration | Apache Airflow 2.10.4 (CeleryExecutor) |
-| Infrastructure | Docker Compose (6 containers, PostgreSQL 16) |
-| Storage | AWS S3 (Parquet/Snappy, Hive-style partitions) |
-| Query Engine | AWS Athena (Presto SQL) |
-| Visualization | Power BI |
-| IaC | Terraform |
-| CI/CD | GitHub Actions (lint, bandit, pip-audit, pytest, checkov) |
-| Language | Python 3.12 |
-| Key Libraries | boto3, pandas, numpy, pyarrow, requests |
-| Testing | pytest + moto (184 tests, AWS mocked at HTTP layer) |
+| Layer | Technology | Role |
+|---|---|---|
+| Orchestration | Apache Airflow 2.10.4 (CeleryExecutor) | Parallel DAG execution across the 4 pipelines |
+| Infrastructure | Docker Compose (6 containers, PostgreSQL 16) | One-command local Airflow deployment |
+| Storage | AWS S3 (Parquet/Snappy, Hive-style partitions) | Columnar lake — Athena prunes partitions instead of scanning the bucket |
+| Query Engine | AWS Athena (Presto SQL) | Serverless SQL directly over S3 |
+| Visualization | Power BI | Premium + rate-cycle dashboards |
+| IaC | Terraform | Reproducible AWS provisioning |
+| CI/CD | GitHub Actions (lint, bandit, pip-audit, pytest, checkov) | Quality + security gates on every push |
+| Language | Python 3.12 | All pipeline and analysis code |
+| Key Libraries | boto3, pandas, numpy, pyarrow, requests | AWS SDK, transforms, Parquet I/O, API clients |
+| Testing | pytest + moto (184 tests, AWS mocked at HTTP layer) | CI exercises the production code path with zero AWS calls |
 
 ## Data Sources
 
