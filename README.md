@@ -196,9 +196,10 @@ make lint               # flake8 across all source dirs
 ## Project Structure
 
 ```
-data-engineering-portfolio/
+sharpe-premium-pipeline/
 ├── config.py                          # Central constants (symbols, S3 bucket, FRED series, EDGAR CIKs)
-├── stock_pipeline/
+├── utils.py                           # Shared AWS/S3 + data helpers (27 tests)
+├── stock_pipeline/                    # (ingest + analyze)
 │   ├── stock_pipeline.py              # Airflow DAG: 10-stock daily ingestion
 │   ├── historical_backtest.py         # 3-year Sharpe ratio analysis
 │   ├── historical_backfill.py         # One-time S3 backfill script (Parquet output)
@@ -206,13 +207,13 @@ data-engineering-portfolio/
 │   ├── finance_utils.py               # Pure finance functions: Sharpe, drawdown, beta
 │   ├── macro_regime_analysis.py       # Regime classification + builder premium by macro regime
 │   └── *.csv / *.json                 # Power BI data files
-├── edgar_pipeline/
+├── edgar_pipeline/                    # (ingest)
 │   └── edgar_pipeline.py             # Airflow DAG: SEC 10-K capex + revenue
-├── fred_pipeline/
+├── fred_pipeline/                     # (ingest)
 │   └── fred_pipeline.py              # Airflow DAG: FRED macro indicators
-├── analysis_pipeline/
+├── analysis_pipeline/                 # (analyze)
 │   └── analysis_pipeline.py          # Airflow DAG: automated backtest trigger
-├── monitoring/
+├── monitoring/                        # (monitor)
 │   ├── pipeline_monitor.py           # Airflow DAG: health checks
 │   └── data_quality.py               # Validation functions
 ├── tests/
@@ -238,6 +239,8 @@ data-engineering-portfolio/
 │   └── outputs.tf
 ├── docker-compose.yaml               # Airflow cluster (6 containers)
 ├── Makefile                          # make up/down/test/lint/analyze/demo
+├── requirements.txt                  # Pinned runtime dependencies
+├── SECURITY.md                       # Vulnerability reporting + triage policy
 ├── LICENSE                           # MIT
 ├── .github/workflows/ci.yml          # CI: lint, pytest, bandit, pip-audit, checkov, terraform fmt
 ├── .env.example                      # Credential template
