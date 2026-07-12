@@ -30,7 +30,7 @@ Analysis of risk-adjusted returns (Jan 2023 – Q1 2026) across 10 major tech st
 | Tier | Companies | Avg Sharpe | AI Strategy |
 |------|-----------|-----------|-------------|
 | Infrastructure | NVDA | 2.910 | Sells the GPUs |
-| AI Builders | META, GOOGL | 1.772 | Proprietary AI (Llama, Gemini, custom chips) |
+| **AI Builders** | META, GOOGL | **1.772** | Proprietary AI (Llama, Gemini, custom chips) |
 | AI Integrators | MSFT, AMZN | 0.923 | Third-party partnerships (OpenAI, Anthropic) |
 | Control | AAPL, TSLA | 1.040 | Mixed AI exposure |
 | Legacy Tech | CRM, ORCL, ADBE | 0.273 | Traditional software |
