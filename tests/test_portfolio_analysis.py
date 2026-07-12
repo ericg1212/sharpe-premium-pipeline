@@ -4,7 +4,6 @@ import os
 import csv
 import tempfile
 import pytest
-from unittest.mock import patch
 
 from stock_pipeline.portfolio_analysis import (
     build_vs_rent_analysis,
@@ -192,8 +191,8 @@ class TestSaveAnalysis:
             chain_summary = value_chain_summary(results)
             rolling_rows = rolling_sharpe_analysis(results)
 
-            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
-                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+            save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows,
+                          output_dir=tmpdir)
 
             assert os.path.exists(os.path.join(tmpdir, 'backtest_results.csv'))
             assert os.path.exists(os.path.join(tmpdir, 'powerbi_master.csv'))
@@ -211,8 +210,8 @@ class TestSaveAnalysis:
         rolling_rows = rolling_sharpe_analysis(results)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
-                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+            save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows,
+                          output_dir=tmpdir)
 
             pbi_path = os.path.join(tmpdir, 'powerbi_master.csv')
             with open(pbi_path) as f:
@@ -231,8 +230,8 @@ class TestSaveAnalysis:
         rolling_rows = rolling_sharpe_analysis(results)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
-                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+            save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows,
+                          output_dir=tmpdir)
 
             cat_path = os.path.join(tmpdir, 'category_summary.csv')
             with open(cat_path) as f:
@@ -267,7 +266,7 @@ class TestSaveAnalysis:
         rolling_rows = rolling_sharpe_analysis(results)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch('stock_pipeline.portfolio_analysis.os.path.dirname', return_value=tmpdir):
-                save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows)
+            save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows,
+                          output_dir=tmpdir)
 
             assert not os.path.exists(os.path.join(tmpdir, 'rolling_sharpe.csv'))
