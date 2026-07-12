@@ -248,7 +248,7 @@ sharpe-premium-pipeline/
 └── README.md
 ```
 
-## Setup
+## Quickstart
 
 ### Prerequisites
 - Docker Desktop
@@ -256,7 +256,7 @@ sharpe-premium-pipeline/
 - AWS account (S3, Athena, Glue)
 - API keys: Alpha Vantage, FRED (free at fred.stlouisfed.org/docs/api/api_key.html)
 
-### Quick Start
+### Run It
 ```bash
 # 1. Clone the repo
 git clone https://github.com/ericg1212/sharpe-premium-pipeline.git
