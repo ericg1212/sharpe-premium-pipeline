@@ -62,6 +62,9 @@ jobs:
         # in single-user local dev — dismissed in Dependabot alerts #10 and #11
         # PYSEC-2026-113: pyarrow, no fix available; PYSEC-2025-183: pyjwt, no fix available
         # PYSEC-2026-172 + PYSEC-2026-173: Airflow 3.x-only fixes, same tolerable_risk pattern
+        # PYSEC-2026-2082/-2083/-2086/-2087/-2088 (fix: 3.3.0) + CVE-2026-40961/-42358/-49267/-46764
+        # (fix: 3.2.2): Airflow 3.x-only fixes, same tolerable_risk pattern — dismissed in
+        # Dependabot alerts #13–#21 (Jul 12 2026)
         run: |
           pip-audit -r requirements.txt \
             --ignore-vuln GHSA-w7rc-q6cm-f5gm \
@@ -87,7 +90,16 @@ jobs:
             --ignore-vuln PYSEC-2026-181 \
             --ignore-vuln PYSEC-2026-186 \
             --ignore-vuln PYSEC-2026-187 \
-            --ignore-vuln CVE-2026-46745
+            --ignore-vuln CVE-2026-46745 \
+            --ignore-vuln PYSEC-2026-2082 \
+            --ignore-vuln PYSEC-2026-2083 \
+            --ignore-vuln PYSEC-2026-2086 \
+            --ignore-vuln PYSEC-2026-2087 \
+            --ignore-vuln PYSEC-2026-2088 \
+            --ignore-vuln CVE-2026-40961 \
+            --ignore-vuln CVE-2026-42358 \
+            --ignore-vuln CVE-2026-49267 \
+            --ignore-vuln CVE-2026-46764
 
       - name: Terraform IaC security scan (checkov)
         run: checkov -d terraform/ --framework terraform --quiet --compact
