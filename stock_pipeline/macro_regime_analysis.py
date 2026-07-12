@@ -15,8 +15,8 @@ S3 outputs:
   analysis/regime_analysis/regime_summary.parquet
 
 Local outputs:
-  stock_pipeline/regime_analysis.csv
-  stock_pipeline/regime_summary.csv
+  data/exports/regime_analysis.csv
+  data/exports/regime_summary.csv
 """
 
 import sys
@@ -358,7 +358,10 @@ def run_regime_analysis():
 
     print_summary(regime_summary, monthly_df)
 
-    output_dir = os.path.dirname(os.path.abspath(__file__))
+    base = '/opt/airflow/data' if os.path.isdir('/opt/airflow/data') \
+        else os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data'))
+    output_dir = os.path.join(base, 'exports')
+    os.makedirs(output_dir, exist_ok=True)
 
     regime_csv = os.path.join(output_dir, 'regime_analysis.csv')
     monthly_df.to_csv(regime_csv, index=False)

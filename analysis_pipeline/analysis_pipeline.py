@@ -5,8 +5,8 @@ after the daily stock pipeline completes.
 Replaces the manual `make analyze` command. Runs at 5:30 PM Mon-Fri —
 30 minutes after the stock pipeline (5:00 PM) to ensure stock data is loaded.
 
-Output CSVs are written to stock_pipeline/ on the host (mounted at
-/opt/airflow/stock_pipeline/ in the container) — Power BI paths unchanged.
+Output CSVs are written to data/exports/ on the host (mounted at
+/opt/airflow/data/exports/ in the container) — Power BI sources read from there.
 
 Note: Reads from Alpha Vantage directly until Session 11, when
 historical_backtest.py is updated to read from Athena instead.
@@ -41,7 +41,7 @@ dag = DAG(
 )
 
 # PYTHONPATH points to dags/ so config.py is importable inside the container.
-# stock_pipeline/ is mounted at /opt/airflow/stock_pipeline/ via docker-compose.
+# data/ is mounted writable at /opt/airflow/data/ via docker-compose for output CSVs.
 run_backtest = BashOperator(
     task_id='run_backtest',
     bash_command=(

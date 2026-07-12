@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 def load_results():
-    base = '/opt/airflow/stock_pipeline' if os.path.isdir('/opt/airflow/stock_pipeline') \
-        else os.path.dirname(os.path.abspath(__file__))
-    results_path = os.path.join(base, 'backtest_results.json')
+    base = '/opt/airflow/data' if os.path.isdir('/opt/airflow/data') \
+        else os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data'))
+    results_path = os.path.join(base, 'exports', 'backtest_results.json')
     with open(results_path) as f:
         return json.load(f)
 
@@ -207,8 +207,10 @@ def value_chain_summary(results):
 
 def save_analysis(build_rent, capex_rows, chain_summary, results, rolling_rows):
     """Save analysis as CSV files for Power BI."""
-    output_dir = '/opt/airflow/stock_pipeline' if os.path.isdir('/opt/airflow/stock_pipeline') \
-        else os.path.dirname(os.path.abspath(__file__))
+    base = '/opt/airflow/data' if os.path.isdir('/opt/airflow/data') \
+        else os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data'))
+    output_dir = os.path.join(base, 'exports')
+    os.makedirs(output_dir, exist_ok=True)
 
     rank_map = {'Infrastructure': 1, 'AI Builder': 2, 'AI Integrator': 3, 'Control': 4, 'Legacy Tech': 5}
     bor_map = {'AI Builder': 'Build', 'AI Integrator': 'Rent'}
@@ -319,7 +321,8 @@ def main():
 
 def run_local():
     """Local demo mode: read from backtest_results.json and print findings without AWS."""
-    results_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backtest_results.json')
+    results_path = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'exports', 'backtest_results.json'))
 
     if not os.path.exists(results_path):
         print(f"ERROR: {results_path} not found.")

@@ -55,7 +55,7 @@ Each month classified by FRED regime (GS10 vs. rolling mean, CPI YoY vs. 4%, UNR
 
 The negative regimes (23 months) reflect the 2022–2023 Fed tightening cycle — broad growth multiple compression, not an AI-specific signal. The **+92.0% is a through-the-cycle figure** across both compression and recovery.
 
-![Dashboard](dashboard.png)
+![Dashboard](docs/dashboard.png)
 
 ## Architecture
 
@@ -205,8 +205,9 @@ sharpe-premium-pipeline/
 │   ├── historical_backfill.py         # One-time S3 backfill script (Parquet output)
 │   ├── portfolio_analysis.py          # Build vs Rent + capex efficiency CSVs
 │   ├── finance_utils.py               # Pure finance functions: Sharpe, drawdown, beta
-│   ├── macro_regime_analysis.py       # Regime classification + builder premium by macro regime
-│   └── *.csv / *.json                 # Power BI data files
+│   └── macro_regime_analysis.py       # Regime classification + builder premium by macro regime
+├── data/exports/                      # Generated analysis CSVs/JSON — Power BI sources
+├── docs/                              # dashboard.png
 ├── edgar_pipeline/                    # (ingest)
 │   └── edgar_pipeline.py             # Airflow DAG: SEC 10-K capex + revenue
 ├── fred_pipeline/                     # (ingest)
