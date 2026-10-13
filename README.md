@@ -10,9 +10,8 @@
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=flat-square&logo=terraform&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
 
-![Builder Premium](https://img.shields.io/badge/Builder%20Premium-%2B92.0%25-22c55e?style=flat-square)
-![Spearman](https://img.shields.io/badge/Spearman%20%CF%81-%2B0.800-0ea5e9?style=flat-square)
-![p-value](https://img.shields.io/badge/p--value-≈0.005-8b5cf6?style=flat-square)
+![Builder Premium](https://img.shields.io/badge/Builder%20Premium-%2B92.0%25%20(directional)-22c55e?style=flat-square)
+![Spearman](https://img.shields.io/badge/Spearman%20%CF%81-%2B0.800%20(n%3D10)-0ea5e9?style=flat-square)
 ![Pipelines](https://img.shields.io/badge/Pipelines-4-brightgreen?style=flat-square)
 ![Tests](https://img.shields.io/badge/Tests-184-brightgreen?style=flat-square)
 ![Stocks](https://img.shields.io/badge/Universe-10%20Stocks-blue?style=flat-square)
@@ -21,11 +20,11 @@
 
 ---
 
-$650B in AI spend forecast for 2026 across Big Tech. The companies spending the most aren't earning the most — the premium flows to builders. This pipeline quantifies that relationship: a **+92.0% Sharpe ratio premium** for proprietary AI builders over third-party integrators (Spearman ρ = +0.800, p ≈ 0.005), derived from four production Airflow pipelines ingesting market prices, SEC 10-K filings, and FRED macro indicators.
+$650B in AI spend forecast for 2026 across Big Tech. The companies spending the most aren't earning the most — the premium flows to builders. This pipeline quantifies that relationship: in this 10-stock sample, proprietary AI builders show a **+92.0% higher average Sharpe ratio** than third-party integrators (directional, n = 10; Spearman ρ = +0.800), derived from four Airflow pipelines ingesting market prices, SEC 10-K filings, and FRED macro indicators.
 
-## Builders Outperform Renters by 92%
+## Builders Led Integrators in This Sample
 
-Analysis of risk-adjusted returns (Jan 2023 – Q1 2026) across 10 major tech stocks reveals a clear **AI value chain hierarchy** in Sharpe ratios:
+Analysis of risk-adjusted returns (Jan 2023 – Q1 2026) across 10 major tech stocks shows an **AI value chain hierarchy** in Sharpe ratios:
 
 | Tier | Companies | Avg Sharpe | AI Strategy |
 |------|-----------|-----------|-------------|
@@ -35,9 +34,9 @@ Analysis of risk-adjusted returns (Jan 2023 – Q1 2026) across 10 major tech st
 | Control | AAPL, TSLA | 1.040 | Mixed AI exposure |
 | Legacy Tech | CRM, ORCL, ADBE | 0.273 | Traditional software |
 
-**Builder Premium: +92.0%** — Companies building proprietary AI outperform those renting it through partnerships by 92% on risk-adjusted returns. Confirmed Q1 2026 — narrowed from the peak through a software sector correction, but direction held.
+**Builder Premium: +92.0%** — In this sample, companies building proprietary AI show a 92% higher average Sharpe ratio than those renting it through partnerships. Through Q1 2026 the premium narrowed from its peak during a software sector correction, but the direction held.
 
-Spearman rank correlation between AI% of capex and Sharpe ratio: **ρ = +0.800** (t ≈ 3.77, p ≈ 0.005) — statistically significant at the 0.01 level. A universe of every major AI builder and integrator at scale — the premium holds stock by stock, not just in aggregate.
+Spearman rank correlation between AI% of capex and Sharpe ratio: **ρ = +0.800** (n = 10). With only 10 stocks and two to three per tier, treat this as a directional signal, not a statistically conclusive result.
 
 Analysis frozen at Q1 2026 — confirmed through a software sector correction and elevated macro volatility.
 
