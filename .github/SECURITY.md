@@ -12,7 +12,7 @@ This is a portfolio/learning project. Only the latest code on `main` is actively
 
 If you discover a security vulnerability, please **do not** open a public GitHub issue.
 
-Instead, open a [GitHub Security Advisory](https://github.com/egrynspan/data-engineering-portfolio/security/advisories/new) (private disclosure).
+Instead, open a [GitHub Security Advisory](https://github.com/ericg1212/sharpe-premium-pipeline/security/advisories/new) (private disclosure).
 
 I aim to respond within 5 business days and will work to address confirmed vulnerabilities promptly.
 
